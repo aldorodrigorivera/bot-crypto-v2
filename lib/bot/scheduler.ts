@@ -9,6 +9,7 @@ import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
 import { getAppConfig, GRID_CONFIGS, MAIN_LOOP_INTERVAL_MS, LAYER3_MIN_INTERVAL_MS, PRICE_BROADCAST_INTERVAL_MS } from '../config'
 import { runtime } from '../runtime'
+import { buildAndSaveSession } from './session'
 import type { GridLevel, GridOrder, BotStopReason } from '../types'
 
 let gridLevels: GridLevel[] = []
@@ -178,11 +179,15 @@ export async function stopBot(): Promise<void> {
   }
 
   await markBotAsStopped('manual', config.bot.pair)
+
+  const session = await buildAndSaveSession(runtime, config.bot.pair, 'manual').catch(() => null)
+
   broadcastSSE('bot_status_change', {
     status: 'stopped',
     reason: 'manual',
     totalProfitUSDC: runtime.botState?.totalProfitUSDC ?? 0,
     totalTrades: runtime.botState?.totalTrades ?? 0,
+    session,
   })
 
   logger.info('Bot detenido')

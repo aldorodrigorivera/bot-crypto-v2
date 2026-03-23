@@ -242,6 +242,22 @@ export interface MicroOrder {
   binanceOrderId?: string
 }
 
+// ─── Sesión de Trading ────────────────────────────────────────────────────
+export interface TradingSession {
+  objectId?: string
+  pair: string
+  startedAt: Date
+  stoppedAt: Date
+  durationMinutes: number
+  totalTrades: number
+  profitTrades: number
+  lossTrades: number
+  totalProfitUSDC: number
+  totalProfitBase: number
+  stopReason: BotStopReason
+  configName: GridConfigName
+}
+
 // ─── Registros de Base de Datos ────────────────────────────────────────────
 export interface LayerAnalysisRecord {
   objectId?: string

@@ -113,6 +113,16 @@ export async function getTradesSummary(pair: string): Promise<TradesSummary> {
   }
 }
 
+export async function getTradesSince(pair: string, since: Date): Promise<TradeRecord[]> {
+  initParse()
+  const query = new Parse.Query('Trade')
+  query.equalTo('pair', pair)
+  query.greaterThanOrEqualTo('executedAt', since)
+  query.limit(10000)
+  const results = await query.find()
+  return results.map(toTradeRecord)
+}
+
 export async function getDailyProfitHistory(pair: string, days = 30): Promise<DailyProfit[]> {
   initParse()
   const since = new Date()

@@ -2,6 +2,7 @@ import { cancelAllOrders } from '../exchange/orders'
 import { markBotAsStopped } from '../database/botState'
 import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
+import { buildAndSaveSession } from './session'
 import type { BotRuntime, BotStopReason } from '../types'
 
 export interface RiskCheckResult {
@@ -75,11 +76,14 @@ export async function executeEmergencyStop(
   }
 
   const botState = runtime.botState
+  const session = await buildAndSaveSession(runtime, pair, reason).catch(() => null)
+
   broadcastSSE('bot_status_change', {
     status: 'stopped',
     reason,
     totalProfitUSDC: botState?.totalProfitUSDC ?? 0,
     totalTrades: botState?.totalTrades ?? 0,
+    session,
   })
 }
 

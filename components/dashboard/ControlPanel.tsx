@@ -1,25 +1,43 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useBotStore } from '@/store/bot'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
 import { StartModal } from './StartModal'
+import { SessionsModal } from './SessionsModal'
 import { useStatus } from '@/hooks/useDashboard'
 import { toast } from 'sonner'
-import { Play, Square, RefreshCw, BarChart2, Brain, RotateCcw, Loader2, Wallet } from 'lucide-react'
+import { Play, Square, RefreshCw, BarChart2, Brain, RotateCcw, Loader2, Wallet, CalendarDays } from 'lucide-react'
 import type { MarketAnalysis } from '@/lib/types'
 
 export function ControlPanel() {
-  const { botStatus, isPaused, setBotUSDC } = useBotStore()
+  const { botStatus, isPaused, setBotUSDC, lastSession } = useBotStore()
   const { refetch: refetchStatus } = useStatus()
 
   const [startOpen, setStartOpen] = useState(false)
+  const [sessionsOpen, setSessionsOpen] = useState(false)
   const [previewAnalysis, setPreviewAnalysis] = useState<MarketAnalysis | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<null | 'stop' | 'rebalance'>(null)
   const [loading, setLoading] = useState<string | null>(null)
+
+  // Toast cuando el bot se detiene y hay resumen de sesión
+  useEffect(() => {
+    if (!lastSession) return
+    const { durationMinutes, totalTrades, profitTrades, lossTrades, totalProfitUSDC } = lastSession
+    const h = Math.floor(durationMinutes / 60)
+    const m = durationMinutes % 60
+    const duration = h > 0 ? `${h}h ${m}m` : `${m}m`
+    const isProfit = totalProfitUSDC >= 0
+
+    toast[isProfit ? 'success' : 'warning']('Sesión finalizada — todos los trades cerrados', {
+      description: `Duración: ${duration} · Trades: ${totalTrades} · ✅ ${profitTrades} con ganancia · ❌ ${lossTrades} con pérdida · Profit: ${isProfit ? '+' : ''}${totalProfitUSDC.toFixed(4)} USDC`,
+      position: 'bottom-right',
+      duration: 12000,
+    })
+  }, [lastSession])
 
   async function callApi(endpoint: string, method = 'POST', body?: object) {
     const res = await fetch(endpoint, {
@@ -216,7 +234,21 @@ export function ControlPanel() {
           {loading === 'usdc' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
           Actualizar USDC para Bot
         </Button>
+
+        {/* Ver Sesiones */}
+        <Button
+          variant="outline"
+          onClick={() => setSessionsOpen(true)}
+          disabled={loading !== null}
+          className="gap-2"
+        >
+          <CalendarDays className="h-4 w-4" />
+          Ver Sesiones
+        </Button>
       </div>
+
+      {/* Modal sesiones */}
+      <SessionsModal open={sessionsOpen} onClose={() => setSessionsOpen(false)} />
 
       {/* Modal inicio — se abre de inmediato con spinner mientras carga el análisis */}
       <StartModal

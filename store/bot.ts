@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SSEEvent, AgentBias, StatusResponse } from '@/lib/types'
+import type { SSEEvent, AgentBias, StatusResponse, TradingSession } from '@/lib/types'
 
 const TEN_MINUTES_MS = 10 * 60 * 1000
 const MAX_PROFIT_POINTS = 72 // 12 horas a intervalos de 10 min
@@ -50,6 +50,9 @@ interface BotStore {
   pair: string
   mode: string
 
+  // Última sesión finalizada (para toast)
+  lastSession: TradingSession | null
+
   // Acciones
   updateFromSSE: (event: SSEEvent) => void
   updateFromStatus: (data: StatusResponse) => void
@@ -92,6 +95,8 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   pair: 'XRP/USDC',
   mode: 'TESTNET',
+
+  lastSession: null,
 
   setSSEConnected: (connected) => set({ sseConnected: connected }),
   setBotUSDC: (value) => set({ botUSDC: value }),
@@ -185,7 +190,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
       }
 
       case 'bot_status_change': {
-        const d = event.data as { status: string }
+        const d = event.data as { status: string; session?: TradingSession }
         const status = d.status === 'running' ? 'running'
           : d.status === 'paused' ? 'paused'
           : 'stopped'
@@ -197,6 +202,8 @@ export const useBotStore = create<BotStore>((set, get) => ({
             profitHistory: [{ time: Date.now(), profit: 0 }],
             lastProfitSampledAt: Date.now(),
           })
+        } else if (status === 'stopped') {
+          set({ botStatus: status, isPaused: false, lastSession: d.session ?? null })
         } else {
           set({ botStatus: status, isPaused: status === 'paused' })
         }
