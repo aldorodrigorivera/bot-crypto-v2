@@ -17,6 +17,9 @@ function createInitialRuntime(): BotRuntime {
     layer3Bias: 'neutral',
     layer3Action: 'keep',
     orderLimitReached: false,
+    consecutiveLosses: 0,
+    peakProfitUSDC: 0,
+    pauseUntil: null,
   }
 }
 

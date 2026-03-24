@@ -3,7 +3,7 @@ import type { AppConfig, GridConfig, GridConfigName } from './types'
 // ─── Constantes globales ───────────────────────────────────────────────────
 export const BINANCE_FEE_PERCENT = 0.1
 export const MIN_LEVEL_SEPARATION = 0.25
-export const MAIN_LOOP_INTERVAL_MS = 30_000
+export const MAIN_LOOP_INTERVAL_MS = 15_000
 export const REANALYSIS_CRON = '0 */4 * * *'
 export const LAYER3_MIN_INTERVAL_MS = 15 * 60 * 1000
 export const PRICE_BROADCAST_INTERVAL_MS = 5_000
@@ -74,6 +74,7 @@ export function getAppConfig(): AppConfig {
         .split(',')
         .map(Number),
       splitSpreadPercent: Number(process.env.SPLIT_SPREAD_PERCENT ?? 0.15),
+      profitTargetUSDC: Number(process.env.PROFIT_TARGET_USDC ?? 5.0),
     },
     server: {
       port: Number(process.env.PORT ?? 3000),

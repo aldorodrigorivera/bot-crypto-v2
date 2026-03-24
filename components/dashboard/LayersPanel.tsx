@@ -1,13 +1,20 @@
 'use client'
 
 import { useBotStore } from '@/store/bot'
+import { useShallow } from 'zustand/react/shallow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Brain, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function LayersPanel() {
-  const { layer3Bias, layer3LastAction, ordersSkippedToday, isPaused, botStatus } = useBotStore()
+  const { layer3Bias, layer3LastAction, ordersSkippedToday, isPaused, botStatus } = useBotStore(useShallow(s => ({
+    layer3Bias: s.layer3Bias,
+    layer3LastAction: s.layer3LastAction,
+    ordersSkippedToday: s.ordersSkippedToday,
+    isPaused: s.isPaused,
+    botStatus: s.botStatus,
+  })))
 
   const biasConfig = {
     bullish: { label: 'ALCISTA', icon: TrendingUp, color: 'text-green-500 border-green-500/30 bg-green-500/10' },

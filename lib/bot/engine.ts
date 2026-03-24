@@ -15,8 +15,6 @@ import { logger } from '../logger'
 import { getAppConfig } from '../config'
 import type { BotRuntime, GridLevel, TradeRecord } from '../types'
 
-const MAX_OPEN_ORDERS = 20    // parar de colocar nuevas órdenes al llegar a este límite
-const RESUME_OPEN_ORDERS = 10 // reanudar cuando las abiertas bajen a este número
 
 export interface CycleResult {
   tradesExecuted: number
@@ -33,6 +31,18 @@ export async function runBotCycle(
   const pair = config.bot.pair
 
   resetDailyCountersIfNeeded(runtime)
+
+  // Verificar pausa temporal (e.g. por pérdidas consecutivas)
+  if (runtime.pauseUntil && runtime.pauseUntil > new Date()) {
+    logger.debug(`Bot en pausa temporal hasta ${runtime.pauseUntil.toISOString()}`)
+    return { tradesExecuted: 0, ordersSkipped: 0, currentPrice: 0 }
+  } else if (runtime.pauseUntil && runtime.pauseUntil <= new Date()) {
+    runtime.pauseUntil = null
+  }
+
+  // Límites dinámicos basados en gridLevels
+  const maxOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 1.5)
+  const resumeOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 0.75)
 
   let currentPrice: number
   try {
@@ -58,6 +68,15 @@ export async function runBotCycle(
   if (riskCheck.shouldStop && riskCheck.reason) {
     await executeEmergencyStop(runtime, riskCheck.reason, pair)
     return { tradesExecuted: 0, ordersSkipped: 0, currentPrice, error: riskCheck.reason }
+  }
+
+  if (riskCheck.shouldPause && riskCheck.reason) {
+    runtime.isPaused = true
+    if (runtime.botState) {
+      runtime.botState.isPaused = true
+    }
+    broadcastSSE('bot_status_change', { status: 'paused', reason: riskCheck.reason })
+    logger.warn(`Bot pausado por regla de riesgo: ${riskCheck.reason}`)
   }
 
   if (runtime.isPaused) {
@@ -223,19 +242,19 @@ export async function runBotCycle(
     const currentOpenCount = Array.from(runtime.activeOrders.values())
       .filter(o => o.status === 'open').length
 
-    if (currentOpenCount >= MAX_OPEN_ORDERS) {
+    if (currentOpenCount >= maxOpenOrders) {
       runtime.orderLimitReached = true
-    } else if (currentOpenCount <= RESUME_OPEN_ORDERS) {
+    } else if (currentOpenCount <= resumeOpenOrders) {
       runtime.orderLimitReached = false
     }
 
     if (runtime.orderLimitReached) {
-      logger.warn(`Límite de ${MAX_OPEN_ORDERS} órdenes abiertas alcanzado (actual: ${currentOpenCount}). Esperando hasta ${RESUME_OPEN_ORDERS}.`)
+      logger.warn(`Límite de ${maxOpenOrders} órdenes abiertas alcanzado (actual: ${currentOpenCount}). Esperando hasta ${resumeOpenOrders}.`)
       broadcastSSE('risk_alert', {
         message: `Límite de órdenes alcanzado`,
         openCount: currentOpenCount,
-        maxOrders: MAX_OPEN_ORDERS,
-        resumeAt: RESUME_OPEN_ORDERS,
+        maxOrders: maxOpenOrders,
+        resumeAt: resumeOpenOrders,
       })
       ordersSkipped++
       runtime.ordersSkippedToday++
@@ -309,6 +328,25 @@ export async function runBotCycle(
         runtime.botState.totalTrades++
         runtime.botState.lastActiveAt = new Date()
         await saveBotState(runtime.botState).catch(() => {})
+      }
+
+      // Tracking de pérdidas consecutivas y peak profit
+      if (filledSide === 'sell') {
+        if (profit < 0) {
+          runtime.consecutiveLosses++
+          if (runtime.consecutiveLosses >= 3) {
+            runtime.pauseUntil = new Date(Date.now() + 90_000)
+            runtime.consecutiveLosses = 0
+            broadcastSSE('risk_alert', { message: '3 pérdidas consecutivas — pausa de 90 segundos activada' })
+            logger.warn('3 pérdidas consecutivas detectadas — pausa temporal de 90s')
+          }
+        } else if (profit > 0) {
+          runtime.consecutiveLosses = 0
+          const currentTotalProfit = runtime.botState?.totalProfitUSDC ?? 0
+          if (currentTotalProfit > runtime.peakProfitUSDC) {
+            runtime.peakProfitUSDC = currentTotalProfit
+          }
+        }
       }
     } catch (err) {
       logger.error('Error colocando orden opuesta:', err)

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useBotStore } from '@/store/bot'
+import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -11,15 +12,20 @@ import { SessionsModal } from './SessionsModal'
 import { useStatus } from '@/hooks/useDashboard'
 import { toast } from 'sonner'
 import { Play, Square, RefreshCw, BarChart2, Brain, RotateCcw, Loader2, Wallet, CalendarDays } from 'lucide-react'
-import type { MarketAnalysis } from '@/lib/types'
+import type { StartupPreview } from '@/lib/types'
 
 export function ControlPanel() {
-  const { botStatus, isPaused, setBotUSDC, lastSession } = useBotStore()
+  const { botStatus, isPaused, setBotUSDC, lastSession } = useBotStore(useShallow(s => ({
+    botStatus: s.botStatus,
+    isPaused: s.isPaused,
+    setBotUSDC: s.setBotUSDC,
+    lastSession: s.lastSession,
+  })))
   const { refetch: refetchStatus } = useStatus()
 
   const [startOpen, setStartOpen] = useState(false)
   const [sessionsOpen, setSessionsOpen] = useState(false)
-  const [previewAnalysis, setPreviewAnalysis] = useState<MarketAnalysis | null>(null)
+  const [previewData, setPreviewData] = useState<StartupPreview | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<null | 'stop' | 'rebalance'>(null)
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -49,12 +55,12 @@ export function ControlPanel() {
   }
 
   async function handleOpenStartModal() {
-    setPreviewAnalysis(null)
+    setPreviewData(null)
     setStartOpen(true)
     setLoading('preview')
     try {
       const res = await callApi('/api/bot/preview', 'GET')
-      if (res.success) setPreviewAnalysis(res.data as MarketAnalysis)
+      if (res.success) setPreviewData(res.data as StartupPreview)
     } finally {
       setLoading(null)
     }
@@ -255,7 +261,8 @@ export function ControlPanel() {
         open={startOpen}
         onClose={() => setStartOpen(false)}
         onConfirm={handleStart}
-        analysis={previewAnalysis}
+        analysis={previewData?.analysis ?? null}
+        claudeRecommendation={previewData?.claudeRecommendation ?? null}
         loading={loading === 'preview'}
       />
 

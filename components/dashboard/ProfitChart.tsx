@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
+import { memo } from 'react'
 import { useBotStore } from '@/store/bot'
+import { useShallow } from 'zustand/react/shallow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp } from 'lucide-react'
 import {
@@ -18,8 +19,12 @@ import { Line } from 'react-chartjs-2'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
-export function ProfitChart() {
-  const { profitHistory, totalProfitUSDC, botStatus } = useBotStore()
+export const ProfitChart = memo(function ProfitChart() {
+  const { profitHistory, totalProfitUSDC, botStatus } = useBotStore(useShallow(s => ({
+    profitHistory: s.profitHistory,
+    totalProfitUSDC: s.totalProfitUSDC,
+    botStatus: s.botStatus,
+  })))
 
   const points = profitHistory.slice(-MAX_POINTS)
 
@@ -115,8 +120,8 @@ export function ProfitChart() {
       : 'última sesión'
 
   return (
-    <Card className="border-border/50 bg-card/50 backdrop-blur">
-      <CardHeader className="pb-3">
+    <Card className="border-border/50 bg-card/50 backdrop-blur flex flex-col">
+      <CardHeader className="pb-3 shrink-0">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <TrendingUp className="h-4 w-4" />
           Ganancia Total
@@ -126,22 +131,22 @@ export function ProfitChart() {
           <span className="ml-auto text-xs text-muted-foreground font-normal">{statusLabel} · 10 min</span>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 flex flex-col min-h-0 pb-4">
         {isEmpty ? (
-          <div className="h-48 flex flex-col items-center justify-center gap-1 text-muted-foreground text-sm">
+          <div className="flex-1 flex flex-col items-center justify-center gap-1 text-muted-foreground text-sm">
             <span>Sin datos de ganancia aún</span>
             {botStatus !== 'running' && (
               <span className="text-xs">Inicia el bot para comenzar a registrar</span>
             )}
           </div>
         ) : (
-          <div style={{ height: 200 }}>
+          <div className="flex-1 min-h-0">
             <Line data={data} options={options} />
           </div>
         )}
       </CardContent>
     </Card>
   )
-}
+})
 
 const MAX_POINTS = 60 // últimos 60 minutos visibles en la gráfica

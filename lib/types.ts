@@ -4,7 +4,7 @@ export type TrendDirection = 'bullish' | 'bearish' | 'sideways'
 export type TrendStrength = 'weak' | 'moderate' | 'strong'
 export type OrderSide = 'buy' | 'sell'
 export type OrderStatus = 'open' | 'filled' | 'cancelled'
-export type BotStopReason = 'manual' | 'stop_loss_range' | 'stop_loss_global' | 'daily_limit' | 'error'
+export type BotStopReason = 'manual' | 'stop_loss_range' | 'stop_loss_global' | 'daily_limit' | 'error' | 'profit_target_reached' | 'trailing_stop_profit'
 export type AgentBias = 'bullish' | 'bearish' | 'neutral'
 export type OrderSizingBias = 'aggressive' | 'normal' | 'conservative'
 export type GridAction = 'keep' | 'shift_up' | 'shift_down' | 'widen' | 'narrow' | 'pause' | 'rebuild'
@@ -314,6 +314,7 @@ export interface AppConfig {
     splitParts: number
     splitDistribution: number[]
     splitSpreadPercent: number
+    profitTargetUSDC: number
   }
   server: {
     port: number
@@ -347,6 +348,15 @@ export interface BotRuntime {
   layer3Bias: AgentBias
   layer3Action: string
   orderLimitReached: boolean  // true cuando se alcanzaron 20 órdenes abiertas
+  consecutiveLosses: number
+  peakProfitUSDC: number
+  pauseUntil: Date | null
+}
+
+// ─── Preview de Inicio ────────────────────────────────────────────────────
+export interface StartupPreview {
+  analysis: MarketAnalysis
+  claudeRecommendation: Layer3AgentResponse | null
 }
 
 // ─── Respuesta de API ──────────────────────────────────────────────────────
