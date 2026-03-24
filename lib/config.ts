@@ -31,7 +31,7 @@ export const GRID_CONFIGS: Record<GridConfigName, GridConfig> = {
   aggressive: {
     name: 'aggressive',
     label: 'Agresivo',
-    gridLevels: 20,
+    gridLevels: 14,
     gridRangePercent: 10,
     description: 'Muchos niveles, rango amplio. Máxima frecuencia de trades.',
     idealFor: 'Alta volatilidad, mercados activos',
