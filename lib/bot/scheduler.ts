@@ -250,16 +250,40 @@ async function checkLayer3Triggers(): Promise<void> {
     }
 
     // Aplicar acción
-    if (response.grid_adjustment.action === 'pause') {
+    const action = response.grid_adjustment.action
+    if (action === 'pause') {
       runtime.isPaused = true
       if (runtime.botState) {
         runtime.botState.isPaused = true
         await saveBotState(runtime.botState).catch(() => {})
       }
       broadcastSSE('bot_status_change', { status: 'paused' })
-    } else if (response.grid_adjustment.action === 'rebuild') {
+    } else if (action === 'rebuild') {
       await stopBot()
       await startBot({ gridLevels: response.grid_adjustment.new_levels })
+    } else if (action === 'shift_up' || action === 'shift_down') {
+      const shiftPct = (response.grid_adjustment.shift_percent ?? 1) / 100
+      const direction = action === 'shift_up' ? 1 : -1
+      if (runtime.botState) {
+        runtime.botState.gridMin = runtime.botState.gridMin * (1 + direction * shiftPct)
+        runtime.botState.gridMax = runtime.botState.gridMax * (1 + direction * shiftPct)
+        await saveBotState(runtime.botState).catch(() => {})
+        broadcastSSE('grid_rebuild', { pair: config.bot.pair, newConfig: runtime.botState.configName, reason: action })
+        logger.info(`Capa 3: grid desplazado (${action}) ${response.grid_adjustment.shift_percent}%`)
+      }
+    } else if (action === 'widen' || action === 'narrow') {
+      const newRangePercent = response.grid_adjustment.new_range_percent ?? 6
+      if (runtime.botState && runtime.currentConfig) {
+        const currentPrice = runtime.botState.gridMin + (runtime.botState.gridMax - runtime.botState.gridMin) / 2
+        const half = currentPrice * (newRangePercent / 100) / 2
+        runtime.botState.gridMin = currentPrice - half
+        runtime.botState.gridMax = currentPrice + half
+        runtime.botState.gridRangePercent = newRangePercent
+        runtime.currentConfig.gridRangePercent = newRangePercent
+        await saveBotState(runtime.botState).catch(() => {})
+        broadcastSSE('grid_rebuild', { pair: config.bot.pair, newConfig: runtime.botState.configName, reason: action })
+        logger.info(`Capa 3: grid ${action} a ${newRangePercent}% de rango`)
+      }
     }
 
     // Actualizar bias en botState

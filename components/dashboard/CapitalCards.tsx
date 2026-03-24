@@ -1,6 +1,7 @@
 'use client'
 
 import { useBotStore } from '@/store/bot'
+import { useShallow } from 'zustand/react/shallow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -45,7 +46,17 @@ export function CapitalCards() {
     totalBase, totalUSDC, totalProfitUSDC,
     todayTrades, totalTrades, ordersSkippedToday,
     activePercent, botUSDC, pair,
-  } = useBotStore()
+  } = useBotStore(useShallow(s => ({
+    totalBase: s.totalBase,
+    totalUSDC: s.totalUSDC,
+    totalProfitUSDC: s.totalProfitUSDC,
+    todayTrades: s.todayTrades,
+    totalTrades: s.totalTrades,
+    ordersSkippedToday: s.ordersSkippedToday,
+    activePercent: s.activePercent,
+    botUSDC: s.botUSDC,
+    pair: s.pair,
+  })))
 
   const [base] = pair.split('/')
   const totalUSDCLive = totalUSDC + totalProfitUSDC

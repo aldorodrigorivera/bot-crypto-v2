@@ -7,6 +7,7 @@ import type { BotRuntime, BotStopReason } from '../types'
 
 export interface RiskCheckResult {
   shouldStop: boolean
+  shouldPause?: boolean
   reason?: BotStopReason
   warning?: string
 }
@@ -36,6 +37,19 @@ export function checkRiskRules(
   // Regla 3: límite de trades diarios
   if (runtime.dailyTradesCount >= maxDailyTrades) {
     return { shouldStop: true, reason: 'daily_limit' }
+  }
+
+  // Regla 4: profit target alcanzado
+  const profitTarget = Number(process.env.PROFIT_TARGET_USDC ?? 5.0)
+  if (profitTarget > 0 && (runtime.botState?.totalProfitUSDC ?? 0) >= profitTarget) {
+    return { shouldStop: false, shouldPause: true, reason: 'profit_target_reached' }
+  }
+
+  // Regla 5: trailing stop sobre ganancia de sesión
+  const profitLockThreshold = 2.0
+  const sessionProfit = runtime.botState?.totalProfitUSDC ?? 0
+  if (runtime.peakProfitUSDC > profitLockThreshold && sessionProfit < runtime.peakProfitUSDC * 0.80) {
+    return { shouldStop: false, shouldPause: true, reason: 'trailing_stop_profit' }
   }
 
   // Warning: precio en zona de peligro (10% inferior del grid)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useBotStore } from '@/store/bot'
+import { useShallow } from 'zustand/react/shallow'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, Minus, Wifi, WifiOff } from 'lucide-react'
@@ -10,7 +11,16 @@ export function StatusCard() {
   const {
     botStatus, isPaused, currentPrice, priceDirection,
     sseConnected, pair, mode, gridConfig,
-  } = useBotStore()
+  } = useBotStore(useShallow(s => ({
+    botStatus: s.botStatus,
+    isPaused: s.isPaused,
+    currentPrice: s.currentPrice,
+    priceDirection: s.priceDirection,
+    sseConnected: s.sseConnected,
+    pair: s.pair,
+    mode: s.mode,
+    gridConfig: s.gridConfig,
+  })))
 
   const statusLabel = botStatus === 'running' ? 'CORRIENDO'
     : botStatus === 'paused' ? 'EN PAUSA'

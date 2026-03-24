@@ -80,7 +80,7 @@ Usa formato Markdown claro con emojis para facilitar la lectura. Sé específico
   try {
     const client = new Anthropic({ apiKey, timeout: 30_000 })
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       messages: [{ role: 'user', content: userPrompt }],
       system: systemPrompt,

@@ -24,8 +24,9 @@ export function runLayer1Analysis(input: Layer1Input): Layer1Output {
   let volatilityScore: number
   if (atrRatio < 0.8) volatilityScore = 90
   else if (atrRatio < 1.2) volatilityScore = 70
-  else if (atrRatio < 1.6) volatilityScore = 45
-  else volatilityScore = 20
+  else if (atrRatio < 1.6) volatilityScore = 70
+  else if (atrRatio < 2.2) volatilityScore = 50
+  else volatilityScore = 15
 
   // ── Posición en grid (30%) ────────────────────────────────────────────────
   let positionScore: number

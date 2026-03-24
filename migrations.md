@@ -1160,7 +1160,7 @@ const RECOMMENDATION_TOOL: Anthropic.Tool = {
   }
 }
 
-// Model: claude-haiku-4-5-20251001 (rápido y económico para decisiones de trading)
+// Model: claude-sonnet-4-6 (rápido y económico para decisiones de trading)
 // tool_choice: { type: 'tool', name: 'grid_recommendation' } — garantiza JSON válido
 // Timeout: 12 segundos
 // Fallback: neutral keep action si Claude no está disponible o hay error

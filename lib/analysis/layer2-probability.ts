@@ -74,19 +74,19 @@ export function runLayer2Analysis(
     orderFlow: { imbalance: 0, contribution: 0 },
   }
 
-  // ── 1. RSI (±28 pts) ──────────────────────────────────────────────────────
+  // ── 1. RSI (±18 pts) ──────────────────────────────────────────────────────
   const rsi = calcRSI(closes)
   signals.rsi.value = rsi
   if (orderSide === 'buy') {
-    if (rsi < 30) signals.rsi.contribution = 28
-    else if (rsi < 40) signals.rsi.contribution = 15
-    else if (rsi > 70) signals.rsi.contribution = -28
-    else if (rsi > 60) signals.rsi.contribution = -10
+    if (rsi < 30) signals.rsi.contribution = 18
+    else if (rsi < 40) signals.rsi.contribution = 10
+    else if (rsi > 70) signals.rsi.contribution = -18
+    else if (rsi > 60) signals.rsi.contribution = -8
   } else {
-    if (rsi > 70) signals.rsi.contribution = 28
-    else if (rsi > 60) signals.rsi.contribution = 15
-    else if (rsi < 30) signals.rsi.contribution = -28
-    else if (rsi < 40) signals.rsi.contribution = -10
+    if (rsi > 70) signals.rsi.contribution = 18
+    else if (rsi > 60) signals.rsi.contribution = 10
+    else if (rsi < 30) signals.rsi.contribution = -18
+    else if (rsi < 40) signals.rsi.contribution = -8
   }
   totalContribution += signals.rsi.contribution
 
@@ -114,13 +114,13 @@ export function runLayer2Analysis(
   }
   totalContribution += signals.bollinger.contribution
 
-  // ── 4. VWAP (±12 pts) ────────────────────────────────────────────────────
+  // ── 4. VWAP (±22 pts) ────────────────────────────────────────────────────
   const vwap = calcVWAP(ohlcv as unknown as number[])
   if (vwap > 0) {
     const deviation = (current - vwap) / vwap
     signals.vwap.deviation = deviation * 100
-    if (orderSide === 'buy' && current < vwap * 0.995) signals.vwap.contribution = 12
-    else if (orderSide === 'sell' && current > vwap * 1.005) signals.vwap.contribution = 12
+    if (orderSide === 'buy' && current < vwap * 0.995) signals.vwap.contribution = 22
+    else if (orderSide === 'sell' && current > vwap * 1.005) signals.vwap.contribution = 22
   }
   totalContribution += signals.vwap.contribution
 

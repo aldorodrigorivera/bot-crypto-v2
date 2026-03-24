@@ -1,6 +1,7 @@
 'use client'
 
 import { useBotStore } from '@/store/bot'
+import { useShallow } from 'zustand/react/shallow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +11,14 @@ export function GridPanel() {
   const {
     gridMin, gridMax, gridLevels, gridConfig,
     currentPrice, openOrders,
-  } = useBotStore()
+  } = useBotStore(useShallow(s => ({
+    gridMin: s.gridMin,
+    gridMax: s.gridMax,
+    gridLevels: s.gridLevels,
+    gridConfig: s.gridConfig,
+    currentPrice: s.currentPrice,
+    openOrders: s.openOrders,
+  })))
 
   const range = gridMax - gridMin
   const priceProgress = range > 0

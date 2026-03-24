@@ -60,7 +60,8 @@ const RECOMMENDATION_TOOL: Anthropic.Tool = {
 export async function runLayer3Agent(
   runtime: BotRuntime,
   analysis: MarketAnalysis,
-  trigger: string
+  trigger: string,
+  timeoutMs = 12_000
 ): Promise<Layer3AgentResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -69,9 +70,12 @@ export async function runLayer3Agent(
   }
 
   try {
-    const client = new Anthropic({ apiKey, timeout: 12_000 })
+    const client = new Anthropic({ apiKey, timeout: timeoutMs })
 
     const botState = runtime.botState
+    const sessionDurationMinutes = botState?.startedAt
+      ? Math.round((Date.now() - new Date(botState.startedAt).getTime()) / 60_000)
+      : 0
     const context = `
 Par: ${analysis.pair}
 Precio actual: ${analysis.currentPrice.toFixed(4)}
@@ -88,11 +92,14 @@ Estado del bot:
 - Órdenes activas: ${runtime.activeOrders.size}
 - Sesgo Capa 3 previo: ${runtime.layer3Bias}
 - Último trade: ${runtime.lastTradeAt?.toISOString() ?? 'nunca'}
+- Pérdidas consecutivas: ${runtime.consecutiveLosses}
+- Duración de sesión (min): ${sessionDurationMinutes}
 
 Capital:
 - Total base: ${botState?.totalBase?.toFixed(2) ?? 'N/A'} ${analysis.pair.split('/')[0]}
 - Capital activo USDC: ${botState?.activeUSDC?.toFixed(2) ?? 'N/A'}
-- Ganancia total: ${botState?.totalProfitUSDC?.toFixed(4) ?? '0'} USDC
+- Ganancia de sesión USDC: ${(botState?.totalProfitUSDC ?? 0).toFixed(4)}
+- Peak ganancia sesión USDC: ${runtime.peakProfitUSDC.toFixed(4)}
 
 Grid actual:
 - Min: ${botState?.gridMin?.toFixed(4) ?? 'N/A'} | Max: ${botState?.gridMax?.toFixed(4) ?? 'N/A'}
@@ -102,7 +109,7 @@ Trigger de esta evaluación: ${trigger}
 `
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: `Eres un experto en grid trading y market making especializado en criptomonedas.
 Analiza el contexto de mercado proporcionado y da una recomendación estratégica.

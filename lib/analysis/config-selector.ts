@@ -12,9 +12,6 @@ export function selectOptimalConfig(
   if (totalCapitalUSD < 100) {
     name = 'conservative'
     reason = 'Capital menor a $100 — modo conservador para minimizar riesgo'
-  } else if (trend === 'bullish' || trend === 'bearish') {
-    name = 'conservative'
-    reason = `Tendencia ${trend} fuerte — modo conservador para reducir exposición`
   } else if (volatility24h < 3) {
     name = 'conservative'
     reason = `Volatilidad baja (${volatility24h.toFixed(1)}%) — mercado lateral suave`

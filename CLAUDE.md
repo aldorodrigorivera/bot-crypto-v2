@@ -15,7 +15,7 @@ Bot de trading automatizado de criptomonedas (XRP/USDC por defecto) en Binance S
 - **Tiempo real**: Server-Sent Events (SSE) via `/api/events`
 - **Exchange**: CCXT v4 (Binance Spot únicamente)
 - **Base de datos**: Back4App (Parse JavaScript SDK)
-- **AI**: Anthropic SDK (`@anthropic-ai/sdk`) — claude-haiku-4-5-20251001
+- **AI**: Anthropic SDK (`@anthropic-ai/sdk`) — claude-sonnet-4-6
 - **Logging**: Winston (solo lado servidor)
 - **Indicadores técnicos**: technicalindicators npm package
 - **Scheduling**: node-cron
@@ -115,11 +115,11 @@ npm run lint     # ESLint
 
 ## Capas de Análisis del Bot
 
-| Capa | Descripción | Tiempo | Trigger |
-|------|-------------|--------|---------|
-| Layer 1 | Risk Score (0-100) con ATR, OrderBook, Volume | <5ms | Cada orden |
-| Layer 2 | Probabilidad técnica: RSI, MACD, Bollinger, VWAP | <100ms | Si Layer 1 aprueba |
-| Layer 3 | Claude AI Agent (claude-haiku-4-5-20251001) | <12s | Volatilidad/idle/periódico |
+| Capa    | Descripción                                      | Tiempo | Trigger                    |
+| ------- | ------------------------------------------------ | ------ | -------------------------- |
+| Layer 1 | Risk Score (0-100) con ATR, OrderBook, Volume    | <5ms   | Cada orden                 |
+| Layer 2 | Probabilidad técnica: RSI, MACD, Bollinger, VWAP | <100ms | Si Layer 1 aprueba         |
+| Layer 3 | Claude AI Agent (claude-sonnet-4-6)              | <12s   | Volatilidad/idle/periódico |
 
 ## Dashboard — Componentes Principales
 
