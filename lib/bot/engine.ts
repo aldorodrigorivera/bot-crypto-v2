@@ -9,7 +9,6 @@ import { checkRiskRules, executeEmergencyStop, resetDailyCountersIfNeeded } from
 import { saveTrade } from '../database/trades'
 import { saveGridOrder, updateGridOrderStatus } from '../database/gridOrders'
 import { saveBotState } from '../database/botState'
-import { saveLayerAnalysis } from '../database/layerAnalysis'
 import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
 import { getAppConfig } from '../config'
@@ -174,16 +173,7 @@ export async function runBotCycle(
       gridRange: { min: gridMin, max: gridMax },
     })
 
-    await saveLayerAnalysis({
-      layer: 1,
-      orderSide: oppositeSide,
-      orderPrice: oppositePrice,
-      approved: layer1.approved,
-      score: layer1.riskScore,
-      sizeMultiplier: layer1.maxSizeMultiplier,
-      subScores: layer1.subScores,
-      evaluatedAt: new Date(),
-    }).catch(() => { })
+    // saveLayerAnalysis deshabilitado — reducir requests a Back4App
 
     broadcastSSE('layer_analysis', {
       layer: 1,
@@ -201,16 +191,7 @@ export async function runBotCycle(
     // Capa 2
     const layer2 = runLayer2Analysis(ohlcv, orderBook, oppositeSide)
 
-    await saveLayerAnalysis({
-      layer: 2,
-      orderSide: oppositeSide,
-      orderPrice: oppositePrice,
-      approved: layer2.approved,
-      score: layer2.probability,
-      sizeMultiplier: layer2.sizeMultiplier,
-      subScores: layer2.signals,
-      evaluatedAt: new Date(),
-    }).catch(() => { })
+    // saveLayerAnalysis deshabilitado — reducir requests a Back4App
 
     broadcastSSE('layer_analysis', {
       layer: 2,

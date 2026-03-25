@@ -29,7 +29,7 @@ export const GRID_RANGE_PERCENT = 8
 export const STOP_LOSS_PERCENT = 12
 
 // Máximo de trades por día calendario (pausa el bot al alcanzarlo)
-export const MAX_DAILY_TRADES = 2000
+export const MAX_DAILY_TRADES = 5000
 
 // Trailing stop sobre ganancia de sesión
 // El trailing solo se activa cuando la ganancia acumulada supera este umbral (USDC)
@@ -46,7 +46,7 @@ export const LOG_LEVEL = 'info'
 // ─── VELOCIDAD DEL BOT ──────────────────────────────────────────────────
 // Intervalo del loop principal en milisegundos (qué tan seguido revisa fills y coloca órdenes)
 // 15000 = 15s (conservador) | 1000 = 1s (alta frecuencia) | 500 = 0.5s (máximo)
-export const MAIN_LOOP_INTERVAL_MS = 1000
+export const MAIN_LOOP_INTERVAL_MS = 1050
 
 
 

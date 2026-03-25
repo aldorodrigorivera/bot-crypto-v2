@@ -4,7 +4,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getRecentTrades, getTodayTrades } from '@/lib/database/trades'
 import { getAppConfig } from '@/lib/config'
 import { logger } from '@/lib/logger'
+import { withCache } from '@/lib/cache'
 import type { ApiResponse } from '@/lib/types'
+
+const CACHE_TTL = 30_000 // 30 segundos
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -14,9 +17,12 @@ export async function GET(req: NextRequest) {
   logger.debug('GET /api/trades', { today, limit })
   try {
     const config = getAppConfig()
-    const trades = today
-      ? await getTodayTrades(config.bot.pair, limit)
-      : await getRecentTrades(config.bot.pair, limit)
+    const cacheKey = `trades:${today}:${limit}:${config.bot.pair}`
+    const trades = await withCache(cacheKey, CACHE_TTL, () =>
+      today
+        ? getTodayTrades(config.bot.pair, limit)
+        : getRecentTrades(config.bot.pair, limit)
+    )
     logger.debug('GET /api/trades OK', { returned: trades.length })
     return NextResponse.json<ApiResponse>({ success: true, data: trades })
   } catch (err) {

@@ -5,12 +5,17 @@ import { runtime as botRuntime } from '@/lib/runtime'
 import { getTradesSummary } from '@/lib/database/trades'
 import { getIncubationStateInMemory } from '@/lib/incubation/manager'
 import { getAppConfig } from '@/lib/config'
+import { withCache } from '@/lib/cache'
 import type { ApiResponse } from '@/lib/types'
+
+const CACHE_TTL = 60_000
 
 export async function GET() {
   try {
     const config = getAppConfig()
-    const summary = await getTradesSummary(config.bot.pair)
+    const summary = await withCache(`trades-summary:${config.bot.pair}`, CACHE_TTL, () =>
+      getTradesSummary(config.bot.pair)
+    )
     const backtestMetrics = botRuntime.lastBacktestMetrics
     const incubation = getIncubationStateInMemory()
 
