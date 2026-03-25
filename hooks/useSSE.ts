@@ -26,8 +26,23 @@ export function useSSE() {
             updateFromSSE(event)
 
             if (event.type === 'risk_alert') {
-              const d = event.data as { message: string; openCount?: number; maxOrders?: number; resumeAt?: number }
-              if (d.openCount != null) {
+              const d = event.data as {
+                message: string
+                kind?: 'rate_limit'
+                waitMs?: number
+                ordersCount?: number
+                ordersLimit?: number
+                openCount?: number
+                maxOrders?: number
+                resumeAt?: number
+              }
+              if (d.kind === 'rate_limit' && d.waitMs != null) {
+                toast.warning(d.message, {
+                  description: `${d.ordersCount}/${d.ordersLimit} órdenes en 10s — esperando ${d.waitMs}ms`,
+                  position: 'bottom-right',
+                  duration: d.waitMs + 1000,
+                })
+              } else if (d.openCount != null) {
                 toast.warning(d.message, {
                   description: `${d.openCount}/${d.maxOrders} órdenes abiertas — reanuda en ≤${d.resumeAt}`,
                   position: 'bottom-right',

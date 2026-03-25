@@ -42,8 +42,10 @@ export async function runBotCycle(
   }
 
   // Límites dinámicos basados en gridLevels
-  const maxOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 1.5)
-  const resumeOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 0.75)
+  // max=2× permite 1 buy + 1 sell por nivel (estado ideal del grid)
+  // resume=1.25× banda estrecha para minimizar ciclos perdidos sin colocar órdenes opuestas
+  const maxOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 2.0)
+  const resumeOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 1.50)
 
   let currentPrice: number
   try {
@@ -140,7 +142,7 @@ export async function runBotCycle(
     // Marcar como filled
     gridOrder.status = 'filled'
     gridOrder.filledAt = new Date()
-    await updateGridOrderStatus(filled.id, 'filled').catch(() => {})
+    await updateGridOrderStatus(filled.id, 'filled').catch(() => { })
 
     const filledSide = filled.side as 'buy' | 'sell'
     const pairedBuyPrice = filledSide === 'sell'
@@ -180,7 +182,7 @@ export async function runBotCycle(
       sizeMultiplier: layer1.maxSizeMultiplier,
       subScores: layer1.subScores,
       evaluatedAt: new Date(),
-    }).catch(() => {})
+    }).catch(() => { })
 
     broadcastSSE('layer_analysis', {
       layer: 1,
@@ -207,7 +209,7 @@ export async function runBotCycle(
       sizeMultiplier: layer2.sizeMultiplier,
       subScores: layer2.signals,
       evaluatedAt: new Date(),
-    }).catch(() => {})
+    }).catch(() => { })
 
     broadcastSSE('layer_analysis', {
       layer: 2,
@@ -279,7 +281,7 @@ export async function runBotCycle(
         }
 
         runtime.activeOrders.set(placed.id, newGridOrder)
-        await saveGridOrder(newGridOrder).catch(() => {})
+        await saveGridOrder(newGridOrder).catch(() => { })
 
         broadcastSSE('order_placed', {
           side: oppositeSide,
@@ -315,7 +317,7 @@ export async function runBotCycle(
         sizeMultiplier: multiplier,
       }
 
-      await saveTrade(trade).catch(() => {})
+      await saveTrade(trade).catch(() => { })
       broadcastSSE('trade_executed', {
         side: filledSide,
         price: filled.price,
@@ -329,10 +331,10 @@ export async function runBotCycle(
         runtime.botState.totalProfitUSDC += profit
         runtime.botState.totalTrades++
         runtime.botState.lastActiveAt = new Date()
-        await saveBotState(runtime.botState).catch(() => {})
+        await saveBotState(runtime.botState).catch(() => { })
         // v3: incubación — registrar trade completado
         if (config.incubation.enabled) {
-          await recordIncubationTrade(profit, profit > 0).catch(() => {})
+          await recordIncubationTrade(profit, profit > 0).catch(() => { })
         }
       }
 

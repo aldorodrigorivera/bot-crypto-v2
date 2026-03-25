@@ -4,6 +4,7 @@ import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
 import { buildAndSaveSession } from './session'
 import type { BotRuntime, BotStopReason } from '../types'
+import { getAppConfig } from '../config'
 
 export interface RiskCheckResult {
   shouldStop: boolean
@@ -36,7 +37,15 @@ export function checkRiskRules(
 
   // Regla 3: límite de trades diarios
   if (runtime.dailyTradesCount >= maxDailyTrades) {
-    return { shouldStop: true, reason: 'daily_limit' }
+    const msg =
+      `Límite propio de trades diarios alcanzado (${maxDailyTrades}). ` +
+      `Pausando hasta mañana. ` +
+      `Nota: el límite real de Binance es 160,000/día. ` +
+      `Puedes aumentar MAX_DAILY_TRADES en .env si lo necesitas.`
+    logger.warn(msg)
+    broadcastSSE('risk_alert', { message: msg })
+    runtime.pausedForDailyLimit = true
+    return { shouldStop: false, shouldPause: true, reason: 'daily_limit' }
   }
 
   // Regla 4: profit target alcanzado
@@ -107,5 +116,15 @@ export function resetDailyCountersIfNeeded(runtime: BotRuntime): void {
     runtime.dailyTradesCount = 0
     runtime.ordersSkippedToday = 0
     runtime.dailyTradesDate = today
+    // Auto-resume si la pausa fue únicamente por el límite diario
+    if (runtime.pausedForDailyLimit) {
+      runtime.isPaused = false
+      runtime.pausedForDailyLimit = false
+      const config = getAppConfig()
+      const msg = `Nuevo día — pausa por límite diario levantada automáticamente. (límite: ${config.bot.maxDailyTrades} trades/día)`
+      logger.info(msg)
+      broadcastSSE('risk_alert', { message: msg })
+      broadcastSSE('bot_status_change', { status: 'running' })
+    }
   }
 }

@@ -4,6 +4,7 @@ import { useBotStore } from '@/store/bot'
 import { useShallow } from 'zustand/react/shallow'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { TrendingUp, TrendingDown, Minus, Wifi, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +12,7 @@ export function StatusCard() {
   const {
     botStatus, isPaused, currentPrice, priceDirection,
     sseConnected, pair, mode, gridConfig,
+    todayTrades, dailyTradesLimit,
   } = useBotStore(useShallow(s => ({
     botStatus: s.botStatus,
     isPaused: s.isPaused,
@@ -20,7 +22,13 @@ export function StatusCard() {
     pair: s.pair,
     mode: s.mode,
     gridConfig: s.gridConfig,
+    todayTrades: s.todayTrades,
+    dailyTradesLimit: s.dailyTradesLimit,
   })))
+
+  const dailyPercent = dailyTradesLimit > 0
+    ? Math.min(100, Math.round((todayTrades / dailyTradesLimit) * 100))
+    : 0
 
   const statusLabel = botStatus === 'running' ? 'CORRIENDO'
     : botStatus === 'paused' ? 'EN PAUSA'
@@ -90,6 +98,27 @@ export function StatusCard() {
           </div>
           </div>
         </div>
+
+        {/* Indicador de trades diarios — solo visible cuando el bot corre */}
+        {botStatus === 'running' && (
+          <div className="mt-4 flex items-center gap-3">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              Trades hoy: {todayTrades}/{dailyTradesLimit}
+            </span>
+            <Progress
+              value={dailyPercent}
+              className={cn(
+                'h-1.5 flex-1',
+                dailyPercent >= 90 ? '[&>div]:bg-red-500'
+                  : dailyPercent >= 70 ? '[&>div]:bg-yellow-500'
+                  : '[&>div]:bg-green-500'
+              )}
+            />
+            <span className="text-xs text-muted-foreground w-10 text-right">
+              {dailyPercent}%
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -23,6 +23,7 @@ function createInitialRuntime(): BotRuntime {
     lastBacktestFailed: false,
     lastBacktestMetrics: null,
     incubationSizeMultiplier: 1.0,
+    pausedForDailyLimit: false,
   }
 }
 

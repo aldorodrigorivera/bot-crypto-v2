@@ -5,8 +5,37 @@ import { useBotStore } from '@/store/bot'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { BarChart2, RefreshCw, CheckCircle, XCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { BarChart2, RefreshCw, CheckCircle, XCircle, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const BACKTEST_TOOLTIP = `Simulación de la estrategia grid sobre datos históricos reales (últimos 90 días) antes de operar con dinero real.
+
+Métricas clave:
+• Win Rate: % de ciclos buy→sell que terminaron con ganancia
+• Profit Factor: ganancias totales ÷ pérdidas totales (>1.3 = rentable)
+• Max Drawdown: peor caída % desde el pico de capital
+• Score: calificación global 0–100
+
+Si el backtest no aprueba (Score bajo), el bot te advierte antes de arrancar.`
+
+function TitleWithTooltip({ children }: { children: React.ReactNode }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex items-center gap-1 cursor-default">
+            {children}
+            <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-line">
+          {BACKTEST_TOOLTIP}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 export function BacktestPanel() {
   const backtest = useBotStore(s => s.backtest)
@@ -43,7 +72,7 @@ export function BacktestPanel() {
         <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <BarChart2 className="h-4 w-4" />
-            Último Backtest
+            <TitleWithTooltip>Último Backtest</TitleWithTooltip>
           </CardTitle>
           <Button size="sm" variant="outline" onClick={handleRerun} disabled={isRunning}>
             <RefreshCw className={cn('h-3 w-3 mr-1', isRunning && 'animate-spin')} />
@@ -62,10 +91,12 @@ export function BacktestPanel() {
       <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <BarChart2 className="h-4 w-4" />
-          Último Backtest
-          {backtest.lastRunAt && (
-            <span className="text-xs text-muted-foreground font-normal">{fmtAgo(backtest.lastRunAt)}</span>
-          )}
+          <TitleWithTooltip>
+            Último Backtest
+            {backtest.lastRunAt && (
+              <span className="text-xs text-muted-foreground font-normal ml-1">{fmtAgo(backtest.lastRunAt)}</span>
+            )}
+          </TitleWithTooltip>
         </CardTitle>
         <Button size="sm" variant="outline" onClick={handleRerun} disabled={isRunning}>
           <RefreshCw className={cn('h-3 w-3 mr-1', isRunning && 'animate-spin')} />
@@ -83,7 +114,6 @@ export function BacktestPanel() {
 
         {!isRunning && (
           <>
-            {/* Métricas principales */}
             <div className="grid grid-cols-4 gap-3">
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Win Rate</p>
@@ -109,7 +139,6 @@ export function BacktestPanel() {
               </div>
             </div>
 
-            {/* Config y período */}
             {backtest.configName && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>Config:</span>
@@ -117,7 +146,6 @@ export function BacktestPanel() {
               </div>
             )}
 
-            {/* Veredicto */}
             <div className={cn(
               'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
               backtest.passed ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
@@ -128,7 +156,6 @@ export function BacktestPanel() {
               }
             </div>
 
-            {/* Razones de falla */}
             {!backtest.passed && backtest.failedReasons.length > 0 && (
               <ul className="space-y-1">
                 {backtest.failedReasons.map((r, i) => (

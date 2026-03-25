@@ -490,6 +490,8 @@ export interface BotRuntime {
   lastBacktestFailed: boolean
   lastBacktestMetrics: BacktestMetrics | null
   incubationSizeMultiplier: number
+  // rate limits
+  pausedForDailyLimit: boolean
 }
 
 // ─── Preview de Inicio ────────────────────────────────────────────────────
@@ -503,6 +505,16 @@ export interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   error?: string
+}
+
+// ─── Rate Limits Info ─────────────────────────────────────────────────────
+export interface RateLimitsInfo {
+  dailyTradesUsed: number
+  dailyTradesLimit: number
+  dailyTradesLimitBinance: number
+  dailyTradesPercent: number
+  ordersLast10s: number
+  ordersLast10sLimitBinance: number
 }
 
 // ─── Respuesta de /api/status ─────────────────────────────────────────────
@@ -522,6 +534,7 @@ export interface StatusResponse {
     activeUSDC: number
     totalUSDC: number
   } | null
+  rateLimits?: RateLimitsInfo
 }
 
 // ─── Position Sizer Input ─────────────────────────────────────────────────

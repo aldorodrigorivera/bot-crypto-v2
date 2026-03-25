@@ -33,6 +33,8 @@ interface BotStore {
   totalTrades: number
   todayTrades: number
   ordersSkippedToday: number
+  dailyTradesLimit: number
+  ordersLast10s: number
 
   // Grid
   gridMin: number
@@ -108,6 +110,8 @@ export const useBotStore = create<BotStore>((set, get) => ({
   totalTrades: 0,
   todayTrades: 0,
   ordersSkippedToday: 0,
+  dailyTradesLimit: 1000,
+  ordersLast10s: 0,
 
   gridMin: 0,
   gridMax: 0,
@@ -178,6 +182,9 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
       layer3Bias: bs?.agentBias ?? 'neutral',
       layer3LastAction: 'keep',
+
+      dailyTradesLimit: data.rateLimits?.dailyTradesLimit ?? 1000,
+      ordersLast10s: data.rateLimits?.ordersLast10s ?? 0,
     })
   },
 

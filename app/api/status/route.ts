@@ -2,8 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { runtime as botRuntime } from '@/lib/runtime'
-import { fetchCurrentPrice } from '@/lib/exchange/orders'
-import { readAccountBalance } from '@/lib/exchange/orders'
+import { fetchCurrentPrice, readAccountBalance, getRateLimiterState } from '@/lib/exchange/orders'
 import { getAppConfig } from '@/lib/config'
 import { logger } from '@/lib/logger'
 import type { ApiResponse, StatusResponse } from '@/lib/types'
@@ -27,6 +26,9 @@ export async function GET() {
       totalUSDC: balance.totalUSDC,
     } : null
 
+    const rl = getRateLimiterState()
+    const maxDailyTrades = config.bot.maxDailyTrades
+
     const data: StatusResponse = {
       isRunning: botRuntime.isRunning,
       isPaused: botRuntime.isPaused,
@@ -38,6 +40,14 @@ export async function GET() {
       mode: config.binance.testnet ? 'TESTNET' : 'PRODUCCIÓN',
       activePercent: config.bot.activePercent,
       liveBalance,
+      rateLimits: {
+        dailyTradesUsed: botRuntime.dailyTradesCount,
+        dailyTradesLimit: maxDailyTrades,
+        dailyTradesLimitBinance: 160_000,
+        dailyTradesPercent: Math.round((botRuntime.dailyTradesCount / maxDailyTrades) * 100),
+        ordersLast10s: rl.count,
+        ordersLast10sLimitBinance: 50,
+      },
     }
 
     logger.debug('GET /api/status OK', { isRunning: data.isRunning, isPaused: data.isPaused, price: currentPrice, openOrders: data.openOrdersCount })

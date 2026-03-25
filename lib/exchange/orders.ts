@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getExchange } from './binance'
+import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
 import type { AccountBalance, ExchangeOrder, OrderSide } from '../types'
 
@@ -8,6 +9,43 @@ import type { AccountBalance, ExchangeOrder, OrderSide } from '../types'
 const isMock = () => process.env.MOCK_BALANCE === 'true'
 export const isMockMode = isMock
 let mockCounter = 0
+
+// ─── Rate Limiter Preventivo (límite real de Binance: 50 órdenes/10s) ────────
+const BINANCE_ORDERS_PER_10S = 50
+const RATE_LIMIT_THRESHOLD = 45 // 90% del límite — umbral preventivo
+
+interface RateLimiterState {
+  count: number
+  windowStart: number
+}
+
+const _rl: RateLimiterState = { count: 0, windowStart: Date.now() }
+
+/** Expone el estado actual del rate limiter para el endpoint /api/status */
+export function getRateLimiterState(): { count: number; windowStart: number; limitBinance: number } {
+  return { count: _rl.count, windowStart: _rl.windowStart, limitBinance: BINANCE_ORDERS_PER_10S }
+}
+
+async function withRateLimit<T>(fn: () => Promise<T>): Promise<T> {
+  const now = Date.now()
+  if (now - _rl.windowStart >= 10_000) {
+    _rl.count = 0
+    _rl.windowStart = now
+  }
+  if (_rl.count >= RATE_LIMIT_THRESHOLD) {
+    const waitMs = 10_000 - (now - _rl.windowStart)
+    const msg =
+      `Rate limit preventivo de Binance: esperando ${waitMs}ms ` +
+      `(${_rl.count}/${BINANCE_ORDERS_PER_10S} órdenes en ventana actual)`
+    logger.warn(msg)
+    broadcastSSE('risk_alert', { message: 'Rate limit preventivo de Binance activado', kind: 'rate_limit', waitMs, ordersCount: _rl.count, ordersLimit: BINANCE_ORDERS_PER_10S })
+    await new Promise(res => setTimeout(res, waitMs))
+    _rl.count = 0
+    _rl.windowStart = Date.now()
+  }
+  _rl.count++
+  return fn()
+}
 
 // ─── Balance ──────────────────────────────────────────────────────────────
 export async function readAccountBalance(pair: string): Promise<AccountBalance> {
@@ -100,21 +138,22 @@ export async function placeLimitOrder(
     }
   }
 
-  const exchange = getExchange()
-  const order = await exchange.createLimitOrder(pair, side, amount, price)
-  logger.info(`Orden ${side} colocada: ${amount} @ ${price}`, { orderId: order.id })
-
-  return {
-    id: order.id,
-    side: order.side as OrderSide,
-    price: order.price,
-    amount: order.amount,
-    filled: order.filled,
-    remaining: order.remaining,
-    status: order.status as ExchangeOrder['status'],
-    timestamp: order.timestamp,
-    symbol: order.symbol,
-  }
+  return withRateLimit(async () => {
+    const exchange = getExchange()
+    const order = await exchange.createLimitOrder(pair, side, amount, price)
+    logger.info(`Orden ${side} colocada: ${amount} @ ${price}`, { orderId: order.id })
+    return {
+      id: order.id,
+      side: order.side as OrderSide,
+      price: order.price,
+      amount: order.amount,
+      filled: order.filled,
+      remaining: order.remaining,
+      status: order.status as ExchangeOrder['status'],
+      timestamp: order.timestamp,
+      symbol: order.symbol,
+    }
+  })
 }
 
 // ─── Cancelar orden ───────────────────────────────────────────────────────

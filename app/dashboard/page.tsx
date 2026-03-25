@@ -23,7 +23,6 @@ export default function DashboardPage() {
   useTradesSummary()
 
   const totalTrades = useBotStore(s => s.totalTrades)
-  const incubationActive = useBotStore(s => s.incubation.isActive)
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-6 space-y-4">
@@ -36,11 +35,12 @@ export default function DashboardPage() {
       {/* Capital */}
       <CapitalCards />
 
-      {/* v3: Backtest */}
-      <BacktestPanel />
-
-      {/* v3: Incubación — solo visible cuando está activa */}
-      {incubationActive && <IncubationPanel />}
+      {/* v3: Backtest + Incubación + Real vs Simulado — fila completa */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <BacktestPanel />
+        <IncubationPanel />
+        <PerformanceComparisonPanel />
+      </div>
 
       {/* Grid + Capas + Mercado */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -48,9 +48,6 @@ export default function DashboardPage() {
         <LayersPanel />
         <MarketPanel />
       </div>
-
-      {/* v3: Performance Real vs Simulado — solo con suficientes trades */}
-      {totalTrades >= 20 && <PerformanceComparisonPanel />}
 
       {/* Gráfico + Tabla órdenes abiertas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
