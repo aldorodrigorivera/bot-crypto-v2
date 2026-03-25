@@ -1,0 +1,17 @@
+Tengo tres puntos o cambios que me gustaría platicar:
+1.-En el card:USDC para Bot, cuando cargue la vista del dashboard quiero que ya aparezca el valor, que no necesite darle click en el botón: Actualizar USDC para bot
+2.-Quita el botón Actualizar USDC para Bot
+3.- Agrega un botón al parar el bot que diga "Generar reporte de sesión" (Este es para poder desencadenar este proceso manualmente) aveces el proceso automático da un error 500 y quiero poder acconarlo manualmente.
+4.- Cuando algun proceso relacionado con guardar el reporte de sesión da un error, indicalo en un banner que se quite hasta que le da clic en el botón "Generar reporte de sesión".
+5.- Tengo estos errores: a que se deben
+ GET /api/metrics/performance 500 in 145ms (next.js: 3ms, application-code: 142ms)
+2026-03-25 07:56:56 [error] POST /api/bot/stop ERROR {"error":"This application has exceeded its request limit."}
+ POST /api/bot/stop 500 in 2.2s (next.js: 101ms, application-code: 2.1s)
+ GET /api/status 200 in 242ms (next.js: 14ms, application-code: 228ms)
+ GET /api/metrics/performance 500 in 83ms (next.js: 1712µs, application-code: 82ms)
+2026-03-25 07:56:58 [error] GET /api/trades/summary ERROR {"error":"This application has exceeded its request limit."}
+ GET /api/trades/summary 500 in 87ms (next.js: 2ms, application-code: 85ms)
+2026-03-25 07:56:59 [error] GET /api/trades/summary ERROR {"error":"This application has exceeded its request limit."}
+ GET /api/trades/summary 500 in 89ms (next.js: 1451µs, application-code: 88ms)
+ 6.- Genera un análisis de sobre las configuraciones que tengo y sobre los limites de binance reales en producción. Dime que tan al limite estoy dame tres rango, alto, medio y bajo. También indicame que podría cambiar para estar en dichos rangos.
+ 
