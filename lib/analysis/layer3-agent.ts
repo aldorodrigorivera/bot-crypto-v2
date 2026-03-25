@@ -61,7 +61,7 @@ export async function runLayer3Agent(
   runtime: BotRuntime,
   analysis: MarketAnalysis,
   trigger: string,
-  timeoutMs = 12_000
+  timeoutMs = 30_000
 ): Promise<Layer3AgentResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {

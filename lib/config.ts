@@ -82,5 +82,25 @@ export function getAppConfig(): AppConfig {
     logLevel: process.env.LOG_LEVEL ?? 'info',
     anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
     mockBalance: process.env.MOCK_BALANCE === 'true',
+    backtest: {
+      enabled: process.env.BACKTEST_ENABLED !== 'false',
+      days: Number(process.env.BACKTEST_DAYS ?? 90),
+      minTrades: Number(process.env.BACKTEST_MIN_TRADES ?? 50),
+      minWinRate: Number(process.env.BACKTEST_MIN_WIN_RATE ?? 55),
+      minProfitFactor: Number(process.env.BACKTEST_MIN_PROFIT_FACTOR ?? 1.3),
+      maxDrawdown: Number(process.env.BACKTEST_MAX_DRAWDOWN ?? 15),
+      minSharpe: Number(process.env.BACKTEST_MIN_SHARPE ?? 0.8),
+    },
+    incubation: {
+      enabled: process.env.INCUBATION_ENABLED !== 'false',
+      minSize: Number(process.env.INCUBATION_MIN_SIZE ?? 0.0001),
+      durationDays: Number(process.env.INCUBATION_DURATION_DAYS ?? 7),
+      minTrades: Number(process.env.INCUBATION_MIN_TRADES ?? 30),
+      targetWinRate: Number(process.env.INCUBATION_TARGET_WIN_RATE ?? 55),
+      maxLossPercent: Number(process.env.INCUBATION_MAX_LOSS_PERCENT ?? 5),
+    },
+    multiConfig: {
+      enabled: process.env.MULTI_CONFIG_ENABLED === 'true',
+    },
   }
 }

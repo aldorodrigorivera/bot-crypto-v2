@@ -20,6 +20,9 @@ function createInitialRuntime(): BotRuntime {
     consecutiveLosses: 0,
     peakProfitUSDC: 0,
     pauseUntil: null,
+    lastBacktestFailed: false,
+    lastBacktestMetrics: null,
+    incubationSizeMultiplier: 1.0,
   }
 }
 

@@ -13,6 +13,7 @@ import { saveLayerAnalysis } from '../database/layerAnalysis'
 import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
 import { getAppConfig } from '../config'
+import { recordIncubationTrade } from '../incubation/manager'
 import type { BotRuntime, GridLevel, TradeRecord } from '../types'
 
 
@@ -236,7 +237,8 @@ export async function runBotCycle(
 
     const baseLevel = gridLevels.find(l => Math.abs(l.price - oppositePrice) < 0.0001)
     const baseAmount = baseLevel?.amount ?? config.bot.sizingBaseAmount
-    const orderAmount = baseAmount * multiplier
+    const incubationMultiplier = runtime.incubationSizeMultiplier ?? 1.0
+    const orderAmount = baseAmount * multiplier * incubationMultiplier
 
     // Verificar límite de órdenes abiertas (hysteresis: pause en 20, resume en 10)
     const currentOpenCount = Array.from(runtime.activeOrders.values())
@@ -328,6 +330,10 @@ export async function runBotCycle(
         runtime.botState.totalTrades++
         runtime.botState.lastActiveAt = new Date()
         await saveBotState(runtime.botState).catch(() => {})
+        // v3: incubación — registrar trade completado
+        if (config.incubation.enabled) {
+          await recordIncubationTrade(profit, profit > 0).catch(() => {})
+        }
       }
 
       // Tracking de pérdidas consecutivas y peak profit

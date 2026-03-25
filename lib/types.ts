@@ -4,7 +4,7 @@ export type TrendDirection = 'bullish' | 'bearish' | 'sideways'
 export type TrendStrength = 'weak' | 'moderate' | 'strong'
 export type OrderSide = 'buy' | 'sell'
 export type OrderStatus = 'open' | 'filled' | 'cancelled'
-export type BotStopReason = 'manual' | 'stop_loss_range' | 'stop_loss_global' | 'daily_limit' | 'error' | 'profit_target_reached' | 'trailing_stop_profit'
+export type BotStopReason = 'manual' | 'stop_loss_range' | 'stop_loss_global' | 'daily_limit' | 'error' | 'profit_target_reached' | 'trailing_stop_profit' | 'incubation_loss_limit'
 export type AgentBias = 'bullish' | 'bearish' | 'neutral'
 export type OrderSizingBias = 'aggressive' | 'normal' | 'conservative'
 export type GridAction = 'keep' | 'shift_up' | 'shift_down' | 'widen' | 'narrow' | 'pause' | 'rebuild'
@@ -18,6 +18,12 @@ export type SSEEventType =
   | 'grid_rebuild'
   | 'risk_alert'
   | 'efficiency_update'
+  | 'backtest_started'
+  | 'backtest_completed'
+  | 'incubation_update'
+  | 'incubation_phase_change'
+  | 'incubation_completed'
+  | 'incubation_aborted'
 
 // ─── Configuración del Grid ────────────────────────────────────────────────
 export interface GridConfig {
@@ -322,6 +328,26 @@ export interface AppConfig {
   logLevel: string
   anthropicApiKey: string
   mockBalance: boolean
+  backtest: {
+    enabled: boolean
+    days: number
+    minTrades: number
+    minWinRate: number
+    minProfitFactor: number
+    maxDrawdown: number
+    minSharpe: number
+  }
+  incubation: {
+    enabled: boolean
+    minSize: number
+    durationDays: number
+    minTrades: number
+    targetWinRate: number
+    maxLossPercent: number
+  }
+  multiConfig: {
+    enabled: boolean
+  }
 }
 
 // ─── Eventos SSE ──────────────────────────────────────────────────────────
@@ -329,6 +355,115 @@ export interface SSEEvent {
   type: SSEEventType
   timestamp: string
   data: object
+}
+
+// ─── v3: Backtesting ──────────────────────────────────────────────────────
+
+export interface OHLCVCandle {
+  timestamp: number
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
+export interface SimulatedTrade {
+  type: 'buy' | 'sell'
+  price: number
+  amount: number
+  timestamp: number
+  fee: number
+  profit?: number
+  cycleId: string
+}
+
+export interface SimulationResult {
+  trades: SimulatedTrade[]
+  finalCapital: number
+  startCapital: number
+  totalReturn: number
+  durationDays: number
+  gridBreaks: number
+}
+
+export interface BacktestMetrics {
+  winRate: number
+  profitFactor: number
+  sharpeRatio: number
+  maxDrawdown: number
+  totalTrades: number
+  completedCycles: number
+  totalReturn: number
+  avgProfitPerCycle: number
+  avgDuration: number
+  totalFeesPaid: number
+  netProfitUSDC: number
+  gridBreaks: number
+  passed: boolean
+  failedReasons: string[]
+  score: number
+}
+
+export interface MultiConfigResult {
+  conservative: BacktestMetrics
+  balanced: BacktestMetrics
+  aggressive: BacktestMetrics
+  winner: GridConfigName
+  winnerReason: string
+}
+
+export interface BacktestRecord {
+  objectId?: string
+  pair: string
+  configName: GridConfigName
+  gridLevels: number
+  gridRangePercent: number
+  periodDays: number
+  startDate: Date
+  endDate: Date
+  totalTrades: number
+  completedCycles: number
+  winRate: number
+  profitFactor: number
+  sharpeRatio: number
+  maxDrawdown: number
+  totalReturn: number
+  netProfitUSDC: number
+  totalFeesPaid: number
+  gridBreaks: number
+  score: number
+  passed: boolean
+  failedReasons: string[]
+  ranAt: Date
+  usedForLaunch: boolean
+}
+
+// ─── v3: Incubación ───────────────────────────────────────────────────────
+
+export type IncubationPhase = 'micro' | 'small' | 'medium' | 'normal'
+
+export interface IncubationPhaseEntry {
+  phase: IncubationPhase
+  startedAt: Date
+  reason: string
+}
+
+export interface IncubationState {
+  objectId?: string
+  isActive: boolean
+  startedAt: Date
+  currentPhase: IncubationPhase
+  realTrades: number
+  realWinRate: number
+  realProfitFactor: number
+  currentSizeMultiplier: number
+  totalRealProfitBTC: number
+  totalRealLossBTC: number
+  phaseHistory: IncubationPhaseEntry[]
+  passedAt?: Date
+  abortedAt?: Date
+  abortReason?: string
 }
 
 // ─── Runtime del Bot ──────────────────────────────────────────────────────
@@ -351,6 +486,10 @@ export interface BotRuntime {
   consecutiveLosses: number
   peakProfitUSDC: number
   pauseUntil: Date | null
+  // v3 — backtest e incubación
+  lastBacktestFailed: boolean
+  lastBacktestMetrics: BacktestMetrics | null
+  incubationSizeMultiplier: number
 }
 
 // ─── Preview de Inicio ────────────────────────────────────────────────────

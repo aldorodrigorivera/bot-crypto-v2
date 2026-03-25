@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SSEEvent, AgentBias, StatusResponse, TradingSession } from '@/lib/types'
+import type { SSEEvent, AgentBias, StatusResponse, TradingSession, IncubationPhase } from '@/lib/types'
 
 const TEN_MINUTES_MS = 10 * 60 * 1000
 const MAX_PROFIT_POINTS = 72 // 12 horas a intervalos de 10 min
@@ -53,6 +53,32 @@ interface BotStore {
   // Última sesión finalizada (para toast)
   lastSession: TradingSession | null
 
+  // v3: Backtest
+  backtest: {
+    passed: boolean
+    score: number
+    winRate: number
+    profitFactor: number
+    maxDrawdown: number
+    sharpe: number
+    isRunning: boolean
+    lastRunAt: string | null
+    configName: string | null
+    failedReasons: string[]
+  }
+
+  // v3: Incubación
+  incubation: {
+    isActive: boolean
+    phase: IncubationPhase
+    progressPercent: number
+    realWinRate: number
+    realPF: number
+    daysIn: number
+    tradesIn: number
+    sizeMultiplier: number
+  }
+
   // Acciones
   updateFromSSE: (event: SSEEvent) => void
   updateFromStatus: (data: StatusResponse) => void
@@ -97,6 +123,30 @@ export const useBotStore = create<BotStore>((set, get) => ({
   mode: 'TESTNET',
 
   lastSession: null,
+
+  backtest: {
+    passed: false,
+    score: 0,
+    winRate: 0,
+    profitFactor: 0,
+    maxDrawdown: 0,
+    sharpe: 0,
+    isRunning: false,
+    lastRunAt: null,
+    configName: null,
+    failedReasons: [],
+  },
+
+  incubation: {
+    isActive: false,
+    phase: 'normal',
+    progressPercent: 0,
+    realWinRate: 0,
+    realPF: 0,
+    daysIn: 0,
+    tradesIn: 0,
+    sizeMultiplier: 1.0,
+  },
 
   setSSEConnected: (connected) => set({ sseConnected: connected }),
   setBotUSDC: (value) => set({ botUSDC: value }),
@@ -219,6 +269,80 @@ export const useBotStore = create<BotStore>((set, get) => ({
       case 'efficiency_update': {
         const d = event.data as { score: number }
         set({ capitalEfficiency: d.score })
+        break
+      }
+
+      case 'backtest_started': {
+        set(s => ({ backtest: { ...s.backtest, isRunning: true } }))
+        break
+      }
+
+      case 'backtest_completed': {
+        const d = event.data as {
+          passed: boolean; score: number; winRate: number; profitFactor: number
+          maxDrawdown: number; sharpeRatio: number; configName: string; failedReasons: string[]
+        }
+        set(s => ({
+          backtest: {
+            ...s.backtest,
+            isRunning: false,
+            passed: d.passed,
+            score: d.score,
+            winRate: d.winRate,
+            profitFactor: d.profitFactor,
+            maxDrawdown: d.maxDrawdown,
+            sharpe: d.sharpeRatio,
+            configName: d.configName ?? null,
+            failedReasons: d.failedReasons ?? [],
+            lastRunAt: new Date().toISOString(),
+          },
+        }))
+        break
+      }
+
+      case 'incubation_update': {
+        const d = event.data as {
+          isActive: boolean; currentPhase: IncubationPhase
+          realWinRate: number; realProfitFactor: number
+          daysInIncubation: number; realTrades: number; currentSizeMultiplier: number
+        }
+        set(s => ({
+          incubation: {
+            ...s.incubation,
+            isActive: d.isActive,
+            phase: d.currentPhase,
+            realWinRate: d.realWinRate,
+            realPF: d.realProfitFactor,
+            daysIn: Math.round(d.daysInIncubation * 10) / 10,
+            tradesIn: d.realTrades,
+            sizeMultiplier: d.currentSizeMultiplier,
+          },
+        }))
+        break
+      }
+
+      case 'incubation_phase_change': {
+        const d = event.data as { newPhase: IncubationPhase; progressPercent: number; sizeMultiplier: number }
+        set(s => ({
+          incubation: {
+            ...s.incubation,
+            phase: d.newPhase,
+            progressPercent: d.progressPercent,
+            sizeMultiplier: d.sizeMultiplier,
+          },
+        }))
+        break
+      }
+
+      case 'incubation_completed': {
+        set(s => ({
+          incubation: { ...s.incubation, isActive: false, phase: 'normal', progressPercent: 100, sizeMultiplier: 1.0 },
+        }))
+        break
+      }
+
+      case 'incubation_aborted': {
+        set(s => ({ incubation: { ...s.incubation, isActive: false } }))
         break
       }
     }

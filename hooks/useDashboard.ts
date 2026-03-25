@@ -86,6 +86,35 @@ export function useGridOrders() {
   })
 }
 
+// ── v3 hooks ─────────────────────────────────────────────────────────────────
+
+export function useBacktestLatest() {
+  return useQuery({
+    queryKey: ['backtest-latest'],
+    queryFn: () => fetchJson('/api/backtest/latest'),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
+}
+
+export function useIncubationStatus() {
+  return useQuery({
+    queryKey: ['incubation-status'],
+    queryFn: () => fetchJson('/api/incubation/status'),
+    refetchInterval: 15_000,
+    staleTime: 10_000,
+  })
+}
+
+export function usePerformanceComparison() {
+  return useQuery({
+    queryKey: ['performance-comparison'],
+    queryFn: () => fetchJson('/api/metrics/performance'),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
+}
+
 export function useLayersLatest() {
   return useQuery({
     queryKey: ['layers-latest'],

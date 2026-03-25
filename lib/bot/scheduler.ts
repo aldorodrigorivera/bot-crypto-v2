@@ -10,6 +10,8 @@ import { logger } from '../logger'
 import { getAppConfig, GRID_CONFIGS, MAIN_LOOP_INTERVAL_MS, LAYER3_MIN_INTERVAL_MS, PRICE_BROADCAST_INTERVAL_MS } from '../config'
 import { runtime } from '../runtime'
 import { buildAndSaveSession } from './session'
+import { runBacktest } from '../backtesting/engine'
+import { loadIncubationState } from '../incubation/manager'
 import type { GridLevel, GridOrder, BotStopReason } from '../types'
 
 let gridLevels: GridLevel[] = []
@@ -43,6 +45,39 @@ export async function startBot(options: {
     : analysis.recommendedConfig
 
   runtime.currentConfig = gridConfig
+
+  // ── v3: Backtest pre-arranque ──────────────────────────────────────────
+  if (config.backtest.enabled) {
+    try {
+      broadcastSSE('backtest_started', {})
+      const btResult = await runBacktest(gridConfig.name)
+      console.log('\n' + btResult.formattedOutput + '\n')
+      runtime.lastBacktestMetrics = btResult.metrics
+      runtime.lastBacktestFailed = !btResult.metrics.passed
+      broadcastSSE('backtest_completed', {
+        ...btResult.metrics,
+        configName: btResult.configName,
+      })
+
+      if (!btResult.metrics.passed) {
+        logger.warn('[scheduler] Backtest NO aprobado', { reasons: btResult.metrics.failedReasons })
+        // En Next.js no hay stdin interactivo — el arranque continúa pero
+        // el flag lastBacktestFailed=true queda visible en /api/status y dashboard.
+        // Para bloquear el arranque, el frontend puede llamar con forceStart=false
+        // y este error será retornado por /api/bot/start antes de llegar aquí.
+      }
+    } catch (err) {
+      logger.error('[scheduler] Error ejecutando backtest:', err)
+      // No bloquear el arranque del bot si el backtest falla por error externo
+    }
+  }
+
+  // ── v3: Cargar estado de incubación ───────────────────────────────────
+  if (config.incubation.enabled) {
+    await loadIncubationState().catch(err =>
+      logger.warn('[scheduler] Error cargando incubación:', err)
+    )
+  }
 
   // Balance y capital
   const balance = await readAccountBalance(pair)

@@ -203,7 +203,7 @@ export function TradesDataTable() {
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Select value={sideFilter} onValueChange={setSideFilter}>
+            <Select value={sideFilter} onValueChange={(v) => setSideFilter(v ?? 'all')}>
               <SelectTrigger className="h-7 w-28 text-xs">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
