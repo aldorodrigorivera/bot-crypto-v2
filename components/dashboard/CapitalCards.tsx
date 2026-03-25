@@ -45,7 +45,7 @@ export function CapitalCards() {
   const {
     totalBase, totalUSDC, totalProfitUSDC,
     todayTrades, totalTrades, ordersSkippedToday,
-    activePercent, botUSDC, pair,
+    botUSDC, pair,
   } = useBotStore(useShallow(s => ({
     totalBase: s.totalBase,
     totalUSDC: s.totalUSDC,
@@ -53,7 +53,6 @@ export function CapitalCards() {
     todayTrades: s.todayTrades,
     totalTrades: s.totalTrades,
     ordersSkippedToday: s.ordersSkippedToday,
-    activePercent: s.activePercent,
     botUSDC: s.botUSDC,
     pair: s.pair,
   })))
@@ -61,6 +60,9 @@ export function CapitalCards() {
   const [base] = pair.split('/')
   const totalUSDCLive = totalUSDC + totalProfitUSDC
   const profitSign = totalProfitUSDC >= 0 ? '+' : ''
+  const realBotPercent = botUSDC !== null && totalUSDCLive > 0
+    ? Math.round((botUSDC / totalUSDCLive) * 100)
+    : null
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -93,14 +95,14 @@ export function CapitalCards() {
       <MetricCard
         title="USDC para Bot"
         value={botUSDC !== null ? `$${botUSDC.toFixed(2)}` : '—'}
-        sub={botUSDC !== null ? `${activePercent}% del capital total` : 'Clic en "Actualizar USDC para Bot"'}
+        sub={botUSDC !== null ? `${realBotPercent}% del capital total ($${botUSDC.toFixed(2)})` : 'Clic en "Actualizar USDC para Bot"'}
         icon={<PiggyBank className="h-4 w-4" />}
         valueClass="text-blue-400"
         tooltip={
           <div className="space-y-1">
             <p className="font-semibold">Capital asignado al bot</p>
-            <p className="text-muted-foreground">El {activePercent}% del Total USDC que el bot puede usar para operar. Se fija manualmente con el botón "Actualizar USDC para Bot" y no cambia automáticamente.</p>
-            <p className="text-muted-foreground">Fórmula: <span className="text-foreground font-mono">Total USDC × {activePercent}%</span></p>
+            <p className="text-muted-foreground">USDC real que el bot usa para el grid ({realBotPercent ?? '—'}% del total). Corresponde al 50% del saldo libre en Binance.</p>
+            <p className="text-muted-foreground">Fórmula: <span className="text-foreground font-mono">freeUSDC × 50%</span></p>
           </div>
         }
       />

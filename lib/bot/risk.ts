@@ -5,6 +5,7 @@ import { logger } from '../logger'
 import { buildAndSaveSession } from './session'
 import type { BotRuntime, BotStopReason } from '../types'
 import { getAppConfig } from '../config'
+import { TRAILING_STOP_THRESHOLD, TRAILING_STOP_DRAWDOWN } from '../../bot.config'
 
 export interface RiskCheckResult {
   shouldStop: boolean
@@ -49,15 +50,14 @@ export function checkRiskRules(
   }
 
   // Regla 4: profit target alcanzado
-  const profitTarget = Number(process.env.PROFIT_TARGET_USDC ?? 5.0)
+  const profitTarget = getAppConfig().bot.profitTargetUSDC
   if (profitTarget > 0 && (runtime.botState?.totalProfitUSDC ?? 0) >= profitTarget) {
     return { shouldStop: false, shouldPause: true, reason: 'profit_target_reached' }
   }
 
   // Regla 5: trailing stop sobre ganancia de sesión
-  const profitLockThreshold = 2.0
   const sessionProfit = runtime.botState?.totalProfitUSDC ?? 0
-  if (runtime.peakProfitUSDC > profitLockThreshold && sessionProfit < runtime.peakProfitUSDC * 0.80) {
+  if (runtime.peakProfitUSDC > TRAILING_STOP_THRESHOLD && sessionProfit < runtime.peakProfitUSDC * TRAILING_STOP_DRAWDOWN) {
     return { shouldStop: false, shouldPause: true, reason: 'trailing_stop_profit' }
   }
 

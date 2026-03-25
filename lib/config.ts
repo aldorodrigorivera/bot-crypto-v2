@@ -1,9 +1,23 @@
 import type { AppConfig, GridConfig, GridConfigName } from './types'
+import {
+  PAIR, ACTIVE_PERCENT, GRID_LEVELS, GRID_RANGE_PERCENT,
+  STOP_LOSS_PERCENT, MAX_DAILY_TRADES,
+  LAYER1_MIN_RISK_SCORE, LAYER2_MIN_PROBABILITY,
+  LAYER3_TRIGGER_VOLATILITY, LAYER3_TRIGGER_IDLE_MINUTES, LAYER3_REVIEW_HOURS,
+  SIZING_BASE_AMOUNT, SIZING_MAX_MULTIPLIER, SIZING_MIN_MULTIPLIER, SIZING_CENTRAL_LEVELS_PERCENT,
+  SPLIT_ENABLED, SPLIT_PARTS, SPLIT_DISTRIBUTION, SPLIT_SPREAD_PERCENT,
+  PROFIT_TARGET_USDC, LOG_LEVEL, MOCK_BALANCE, BINANCE_TESTNET,
+  BACKTEST_ENABLED, BACKTEST_DAYS, BACKTEST_MIN_TRADES, BACKTEST_MIN_WIN_RATE,
+  BACKTEST_MIN_PROFIT_FACTOR, BACKTEST_MAX_DRAWDOWN, BACKTEST_MIN_SHARPE,
+  INCUBATION_ENABLED, INCUBATION_MIN_SIZE, INCUBATION_DURATION_DAYS,
+  INCUBATION_MIN_TRADES, INCUBATION_TARGET_WIN_RATE, INCUBATION_MAX_LOSS_PERCENT,
+  MULTI_CONFIG_ENABLED, MAIN_LOOP_INTERVAL_MS,
+} from '../bot.config'
 
 // ─── Constantes globales ───────────────────────────────────────────────────
 export const BINANCE_FEE_PERCENT = 0.1
 export const MIN_LEVEL_SEPARATION = 0.25
-export const MAIN_LOOP_INTERVAL_MS = 15_000
+export { MAIN_LOOP_INTERVAL_MS }
 export const REANALYSIS_CRON = '0 */4 * * *'
 export const LAYER3_MIN_INTERVAL_MS = 15 * 60 * 1000
 export const PRICE_BROADCAST_INTERVAL_MS = 5_000
@@ -39,13 +53,13 @@ export const GRID_CONFIGS: Record<GridConfigName, GridConfig> = {
   },
 }
 
-// ─── Configuración central desde variables de entorno ─────────────────────
+// ─── Configuración central desde bot.config.ts ────────────────────────────
 export function getAppConfig(): AppConfig {
   return {
     binance: {
       apiKey: process.env.BINANCE_API_KEY ?? '',
       secret: process.env.BINANCE_SECRET ?? '',
-      testnet: process.env.BINANCE_TESTNET === 'true',
+      testnet: BINANCE_TESTNET,
     },
     back4app: {
       appId: process.env.BACK4APP_APP_ID ?? '',
@@ -53,54 +67,52 @@ export function getAppConfig(): AppConfig {
       serverUrl: process.env.BACK4APP_SERVER_URL ?? 'https://parseapi.back4app.com/parse',
     },
     bot: {
-      pair: process.env.PAIR ?? 'XRP/USDC',
-      activePercent: Number(process.env.ACTIVE_PERCENT ?? 20),
-      gridLevels: Number(process.env.GRID_LEVELS ?? 10),
-      gridRangePercent: Number(process.env.GRID_RANGE_PERCENT ?? 6),
-      stopLossPercent: Number(process.env.STOP_LOSS_PERCENT ?? 12),
-      maxDailyTrades: Number(process.env.MAX_DAILY_TRADES ?? 200),
-      layer1MinRiskScore: Number(process.env.LAYER1_MIN_RISK_SCORE ?? 30),
-      layer2MinProbability: Number(process.env.LAYER2_MIN_PROBABILITY ?? 45),
-      layer3TriggerVolatility: Number(process.env.LAYER3_TRIGGER_VOLATILITY ?? 2.0),
-      layer3TriggerIdleMinutes: Number(process.env.LAYER3_TRIGGER_IDLE_MINUTES ?? 30),
-      layer3ReviewHours: Number(process.env.LAYER3_REVIEW_HOURS ?? 4),
-      sizingBaseAmount: Number(process.env.SIZING_BASE_AMOUNT ?? 0.001),
-      sizingMaxMultiplier: Number(process.env.SIZING_MAX_MULTIPLIER ?? 1.5),
-      sizingMinMultiplier: Number(process.env.SIZING_MIN_MULTIPLIER ?? 0.2),
-      sizingCentralLevelsPercent: Number(process.env.SIZING_CENTRAL_LEVELS_PERCENT ?? 60),
-      splitEnabled: process.env.SPLIT_ENABLED === 'true',
-      splitParts: Number(process.env.SPLIT_PARTS ?? 3),
-      splitDistribution: (process.env.SPLIT_DISTRIBUTION ?? '30,40,30')
-        .split(',')
-        .map(Number),
-      splitSpreadPercent: Number(process.env.SPLIT_SPREAD_PERCENT ?? 0.15),
-      profitTargetUSDC: Number(process.env.PROFIT_TARGET_USDC ?? 5.0),
+      pair: PAIR,
+      activePercent: ACTIVE_PERCENT,
+      gridLevels: GRID_LEVELS,
+      gridRangePercent: GRID_RANGE_PERCENT,
+      stopLossPercent: STOP_LOSS_PERCENT,
+      maxDailyTrades: MAX_DAILY_TRADES,
+      layer1MinRiskScore: LAYER1_MIN_RISK_SCORE,
+      layer2MinProbability: LAYER2_MIN_PROBABILITY,
+      layer3TriggerVolatility: LAYER3_TRIGGER_VOLATILITY,
+      layer3TriggerIdleMinutes: LAYER3_TRIGGER_IDLE_MINUTES,
+      layer3ReviewHours: LAYER3_REVIEW_HOURS,
+      sizingBaseAmount: SIZING_BASE_AMOUNT,
+      sizingMaxMultiplier: SIZING_MAX_MULTIPLIER,
+      sizingMinMultiplier: SIZING_MIN_MULTIPLIER,
+      sizingCentralLevelsPercent: SIZING_CENTRAL_LEVELS_PERCENT,
+      splitEnabled: SPLIT_ENABLED,
+      splitParts: SPLIT_PARTS,
+      splitDistribution: SPLIT_DISTRIBUTION,
+      splitSpreadPercent: SPLIT_SPREAD_PERCENT,
+      profitTargetUSDC: PROFIT_TARGET_USDC,
     },
     server: {
       port: Number(process.env.PORT ?? 3000),
     },
-    logLevel: process.env.LOG_LEVEL ?? 'info',
+    logLevel: LOG_LEVEL,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
-    mockBalance: process.env.MOCK_BALANCE === 'true',
+    mockBalance: MOCK_BALANCE,
     backtest: {
-      enabled: process.env.BACKTEST_ENABLED !== 'false',
-      days: Number(process.env.BACKTEST_DAYS ?? 90),
-      minTrades: Number(process.env.BACKTEST_MIN_TRADES ?? 50),
-      minWinRate: Number(process.env.BACKTEST_MIN_WIN_RATE ?? 55),
-      minProfitFactor: Number(process.env.BACKTEST_MIN_PROFIT_FACTOR ?? 1.3),
-      maxDrawdown: Number(process.env.BACKTEST_MAX_DRAWDOWN ?? 15),
-      minSharpe: Number(process.env.BACKTEST_MIN_SHARPE ?? 0.8),
+      enabled: BACKTEST_ENABLED,
+      days: BACKTEST_DAYS,
+      minTrades: BACKTEST_MIN_TRADES,
+      minWinRate: BACKTEST_MIN_WIN_RATE,
+      minProfitFactor: BACKTEST_MIN_PROFIT_FACTOR,
+      maxDrawdown: BACKTEST_MAX_DRAWDOWN,
+      minSharpe: BACKTEST_MIN_SHARPE,
     },
     incubation: {
-      enabled: process.env.INCUBATION_ENABLED !== 'false',
-      minSize: Number(process.env.INCUBATION_MIN_SIZE ?? 0.0001),
-      durationDays: Number(process.env.INCUBATION_DURATION_DAYS ?? 7),
-      minTrades: Number(process.env.INCUBATION_MIN_TRADES ?? 30),
-      targetWinRate: Number(process.env.INCUBATION_TARGET_WIN_RATE ?? 55),
-      maxLossPercent: Number(process.env.INCUBATION_MAX_LOSS_PERCENT ?? 5),
+      enabled: INCUBATION_ENABLED,
+      minSize: INCUBATION_MIN_SIZE,
+      durationDays: INCUBATION_DURATION_DAYS,
+      minTrades: INCUBATION_MIN_TRADES,
+      targetWinRate: INCUBATION_TARGET_WIN_RATE,
+      maxLossPercent: INCUBATION_MAX_LOSS_PERCENT,
     },
     multiConfig: {
-      enabled: process.env.MULTI_CONFIG_ENABLED === 'true',
+      enabled: MULTI_CONFIG_ENABLED,
     },
   }
 }

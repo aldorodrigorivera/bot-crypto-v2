@@ -6,7 +6,8 @@ import type { AccountBalance, ExchangeOrder, OrderSide } from '../types'
 
 // Mock mode solo afecta operaciones autenticadas (balance, órdenes).
 // Datos de mercado (precio, OHLCV, order book) siempre son reales — son públicos.
-const isMock = () => process.env.MOCK_BALANCE === 'true'
+import { MOCK_BALANCE } from '../../bot.config'
+const isMock = () => MOCK_BALANCE
 export const isMockMode = isMock
 let mockCounter = 0
 
@@ -55,7 +56,7 @@ export async function readAccountBalance(pair: string): Promise<AccountBalance> 
       freeBase: 50,
       usedBase: 50,
       totalUSDC: 100,
-      freeUSDC: 500,
+      freeUSDC: 100,
     }
   }
 

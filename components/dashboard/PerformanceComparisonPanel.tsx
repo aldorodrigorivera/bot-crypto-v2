@@ -78,7 +78,7 @@ export function PerformanceComparisonPanel() {
     )
   }
 
-  if (!data.ready) {
+  if (!data.ready || !data.comparison) {
     return (
       <Card className="border-border/50 bg-card/50 backdrop-blur">
         <CardHeader className="pb-3">

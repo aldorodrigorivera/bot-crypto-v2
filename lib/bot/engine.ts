@@ -44,8 +44,9 @@ export async function runBotCycle(
   // Límites dinámicos basados en gridLevels
   // max=2× permite 1 buy + 1 sell por nivel (estado ideal del grid)
   // resume=1.25× banda estrecha para minimizar ciclos perdidos sin colocar órdenes opuestas
-  const maxOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 2.0)
-  const resumeOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 1.50)
+  const splitFactor = config.bot.splitEnabled ? config.bot.splitParts : 1
+  const maxOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 2.0 * splitFactor)
+  const resumeOpenOrders = Math.round((runtime.currentConfig?.gridLevels ?? 10) * 1.5 * splitFactor)
 
   let currentPrice: number
   try {

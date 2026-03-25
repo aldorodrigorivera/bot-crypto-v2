@@ -69,7 +69,11 @@ export function ControlPanel() {
   async function handleStart(opts: { gridLevels: number; gridRangePercent: number }) {
     setLoading('start')
     try {
-      await callApi('/api/bot/start', 'POST', opts)
+      await callApi('/api/bot/start', 'POST', {
+        ...opts,
+        analysis: previewData?.analysis ?? null,
+        claudeRecommendation: previewData?.claudeRecommendation ?? null,
+      })
       await refetchStatus()
     } finally {
       setLoading(null)
@@ -127,8 +131,8 @@ export function ControlPanel() {
         const totalUSDC = d.liveBalance?.totalUSDC ?? 0
         const profitUSDC = d.botState?.totalProfitUSDC ?? 0
         const totalLive = totalUSDC + profitUSDC
-        const pct = d.activePercent ?? 20
-        const botUSDC = totalLive * (pct / 100)
+        const botUSDC = d.liveBalance?.activeUSDC ?? 0
+        const pct = totalLive > 0 ? Math.round((botUSDC / totalLive) * 100) : 0
         setBotUSDC(botUSDC)
         toast.success('USDC para Bot actualizado', {
           description: `Total: $${totalLive.toFixed(2)} → Bot (${pct}%): $${botUSDC.toFixed(2)}`,

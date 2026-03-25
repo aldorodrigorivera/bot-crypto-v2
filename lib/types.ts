@@ -492,6 +492,13 @@ export interface BotRuntime {
   incubationSizeMultiplier: number
   // rate limits
   pausedForDailyLimit: boolean
+  // snapshot del inicio de sesión (para el reporte)
+  startSnapshot: {
+    gridLevels: number
+    gridRangePercent: number
+    analysis: MarketAnalysis | null
+    claudeRecommendation: Layer3AgentResponse | null
+  } | null
 }
 
 // ─── Preview de Inicio ────────────────────────────────────────────────────

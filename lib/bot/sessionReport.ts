@@ -3,6 +3,8 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { logger } from '../logger'
 import type { TradingSession } from '../types'
+import * as botConfig from '../../bot.config'
+import { runtime as botRuntime } from '../runtime'
 
 const STOP_REASON_ES: Record<string, string> = {
   manual: 'Parada manual por el operador',
@@ -91,6 +93,31 @@ Usa formato Markdown claro con emojis para facilitar la lectura. Sé específico
       .map(b => (b as Anthropic.TextBlock).text)
       .join('\n')
 
+    const configSnapshot = Object.entries(botConfig)
+      .map(([k, v]) => `| \`${k}\` | \`${JSON.stringify(v)}\` |`)
+      .join('\n')
+
+    const snap = botRuntime.startSnapshot
+    const claudeSection = snap ? `
+## Parámetros de Inicio
+
+| Parámetro | Valor |
+|-----------|-------|
+| Niveles del Grid (slider) | ${snap.gridLevels} |
+| Rango del Grid (slider) | ${snap.gridRangePercent}% |
+${snap.analysis ? `| Config recomendada (mercado) | ${snap.analysis.recommendedConfig.label} |
+| Volatilidad 24h | ${snap.analysis.volatility24h.toFixed(1)}% |
+| Tendencia | ${snap.analysis.trend} |
+| Razón | ${snap.analysis.configReason} |` : ''}
+${snap.claudeRecommendation ? `
+### Claude AI al inicio
+- **Bias**: ${snap.claudeRecommendation.market_bias} (${snap.claudeRecommendation.confidence}% confianza)
+- **Razonamiento**: ${snap.claudeRecommendation.reasoning}
+- **Niveles sugeridos**: ${snap.claudeRecommendation.grid_adjustment.new_levels}
+- **Rango sugerido**: ${snap.claudeRecommendation.grid_adjustment.new_range_percent}%
+${snap.claudeRecommendation.risk_flags.length > 0 ? `- **Alertas**: ${snap.claudeRecommendation.risk_flags.join(' · ')}` : ''}` : ''}
+` : ''
+
     const markdown = `# Reporte de Sesión — ${session.pair}
 **Fecha:** ${datePart} ${timePart.replace(/-/g, ':')}
 **Motivo de parada:** ${STOP_REASON_ES[session.stopReason] ?? session.stopReason}
@@ -111,7 +138,19 @@ Usa formato Markdown claro con emojis para facilitar la lectura. Sé específico
 
 ---
 
+${claudeSection}
+
+---
+
 ${analysisText}
+
+---
+
+## Configuración bot.config.ts (snapshot de la sesión)
+
+| Variable | Valor |
+|----------|-------|
+${configSnapshot}
 
 ---
 *Reporte generado automáticamente por Claude Haiku el ${stoppedAt.toLocaleString('es-MX')}*

@@ -24,6 +24,7 @@ function createInitialRuntime(): BotRuntime {
     lastBacktestMetrics: null,
     incubationSizeMultiplier: 1.0,
     pausedForDailyLimit: false,
+    startSnapshot: null,
   }
 }
 

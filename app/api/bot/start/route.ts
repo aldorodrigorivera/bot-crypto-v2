@@ -36,6 +36,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    botRuntime.startSnapshot = {
+      gridLevels: body.gridLevels,
+      gridRangePercent: body.gridRangePercent,
+      analysis: body.analysis ?? null,
+      claudeRecommendation: body.claudeRecommendation ?? null,
+    }
+
     await startBot({
       resume: body.resume ?? false,
       gridLevels: body.gridLevels,

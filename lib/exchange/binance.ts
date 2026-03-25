@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { BINANCE_TESTNET } from '../../bot.config'
 
 const g = globalThis as { _exchange?: any }
 
@@ -19,7 +20,7 @@ export function getExchange(): any {
     },
   })
 
-  if (process.env.BINANCE_TESTNET === 'true') {
+  if (BINANCE_TESTNET) {
     exchange.setSandboxMode(true)
   }
 

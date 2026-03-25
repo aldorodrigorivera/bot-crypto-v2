@@ -22,7 +22,7 @@ export async function GET() {
     const liveBalance = balance ? {
       totalBase: balance.totalBase,
       activeBase: balance.totalBase * activePercent,
-      activeUSDC: balance.freeUSDC,
+      activeUSDC: balance.freeUSDC * 0.5,
       totalUSDC: balance.totalUSDC,
     } : null
 
