@@ -1,18 +1,19 @@
 export const PROFIT_TARGET_USDC = 0
 
 // Modo de operación:
-//   true  → Testnet (dinero de prueba, sin riesgo real) ← RECOMENDADO PARA EMPEZAR
-//   false → Producción (dinero real, úsalo solo cuando estés seguro)
+//   true  → Testnet (dinero de prueba, sin riesgo real)
+//   false → Producción — con MOCK_BALANCE=true no hay riesgo real aunque apunte a producción
 export const BINANCE_TESTNET = true
 
-// Balance simulado (true = no consulta Binance, usa 1000 base + 10000 USDC ficticios)
-// Útil para probar el bot sin credenciales o sin saldo real
-export const MOCK_BALANCE = true
+// Balance simulado (true = órdenes simuladas localmente, datos de mercado son reales)
+// RECOMENDADO para pruebas realistas: usa precios/OHLCV/orderbook de producción real
+// sin ejecutar órdenes reales ni arriesgar dinero
+export const MOCK_BALANCE = false
 
 
 // ─── CONFIGURACIÓN DEL BOT ─────────────────────────────────────────────
 // Par de trading principal
-export const PAIR = 'XRP/USDC'
+export const PAIR = 'XRP/USDT'
 
 // Porcentaje del XRP total que el bot puede usar para operar (el resto es reserva intocable)
 export const ACTIVE_PERCENT = 20
@@ -29,7 +30,7 @@ export const GRID_RANGE_PERCENT = 8
 export const STOP_LOSS_PERCENT = 12
 
 // Máximo de trades por día calendario (pausa el bot al alcanzarlo)
-export const MAX_DAILY_TRADES = 5000
+export const MAX_DAILY_TRADES = 50000
 
 // Trailing stop sobre ganancia de sesión
 // El trailing solo se activa cuando la ganancia acumulada supera este umbral (USDC)
@@ -58,10 +59,10 @@ export const LAYER1_MIN_RISK_SCORE = 30
 export const LAYER2_MIN_PROBABILITY = 45
 
 // Capa 3: % de cambio de volatilidad en 10min que activa al agente
-export const LAYER3_TRIGGER_VOLATILITY = 2.0
+export const LAYER3_TRIGGER_VOLATILITY = 3.5
 
 // Capa 3: Minutos sin trades que activa al agente
-export const LAYER3_TRIGGER_IDLE_MINUTES = 30
+export const LAYER3_TRIGGER_IDLE_MINUTES = 45
 
 // Capa 3: Re-análisis periódico del agente (horas)
 export const LAYER3_REVIEW_HOURS = 4
@@ -69,7 +70,7 @@ export const LAYER3_REVIEW_HOURS = 4
 
 // ─── POSITION SIZING (v2) ───────────────────────────────────────────────
 // Tamaño base de cada orden en la moneda base (XRP)
-export const SIZING_BASE_AMOUNT = 0.0013
+export const SIZING_BASE_AMOUNT = 1
 
 // Multiplicador máximo de tamaño (señal muy fuerte)
 export const SIZING_MAX_MULTIPLIER = 1.5
