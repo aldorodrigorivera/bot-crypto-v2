@@ -484,6 +484,7 @@ export interface BotRuntime {
   layer3Action: string
   orderLimitReached: boolean  // true cuando se alcanzaron 20 órdenes abiertas
   consecutiveLosses: number
+  consecutiveRebuilds: number
   peakProfitUSDC: number
   pauseUntil: Date | null
   // v3 — backtest e incubación

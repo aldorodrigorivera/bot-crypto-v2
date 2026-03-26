@@ -8,6 +8,7 @@ import { getActiveGridOrders, saveGridOrder, updateGridOrderStatus } from '../da
 import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
 import { getAppConfig, MAIN_LOOP_INTERVAL_MS, LAYER3_MIN_INTERVAL_MS, PRICE_BROADCAST_INTERVAL_MS } from '../config'
+import { LAYER3_MAX_CONSECUTIVE_REBUILDS } from '../../bot.config'
 import { runtime } from '../runtime'
 import { buildAndSaveSession } from './session'
 import { runBacktest } from '../backtesting/engine'
@@ -286,6 +287,7 @@ export async function resumeBot(): Promise<void> {
   if (!runtime.isPaused) throw new Error('El bot no está pausado')
 
   runtime.isPaused = false
+  runtime.consecutiveRebuilds = 0
   if (runtime.botState) {
     runtime.botState.isPaused = false
     await saveBotState(runtime.botState).catch(() => {})
@@ -348,8 +350,22 @@ async function checkLayer3Triggers(): Promise<void> {
       }
       broadcastSSE('bot_status_change', { status: 'paused' })
     } else if (action === 'rebuild') {
-      await stopBot()
-      await startBot({ gridLevels: response.grid_adjustment.new_levels })
+      if (runtime.consecutiveRebuilds >= LAYER3_MAX_CONSECUTIVE_REBUILDS) {
+        runtime.isPaused = true
+        if (runtime.botState) {
+          runtime.botState.isPaused = true
+          await saveBotState(runtime.botState).catch(() => {})
+        }
+        const msg = `Capa 3 recomendó rebuild ${runtime.consecutiveRebuilds + 1} veces consecutivas sin trades — bot pausado para evitar loop. Reanuda manualmente cuando el mercado mejore.`
+        logger.warn(`[Layer3] ${msg}`)
+        broadcastSSE('risk_alert', { message: msg })
+        broadcastSSE('bot_status_change', { status: 'paused', reason: 'consecutive_rebuilds_limit' })
+      } else {
+        runtime.consecutiveRebuilds++
+        logger.info(`[Layer3] Rebuild #${runtime.consecutiveRebuilds}/${LAYER3_MAX_CONSECUTIVE_REBUILDS}`)
+        await stopBot()
+        await startBot({ gridLevels: response.grid_adjustment.new_levels })
+      }
     } else if (action === 'shift_up' || action === 'shift_down') {
       const shiftPct = (response.grid_adjustment.shift_percent ?? 1) / 100
       const direction = action === 'shift_up' ? 1 : -1

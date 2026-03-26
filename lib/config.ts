@@ -19,7 +19,7 @@ export const BINANCE_FEE_PERCENT = 0.1
 export const MIN_LEVEL_SEPARATION = 0.25
 export { MAIN_LOOP_INTERVAL_MS }
 export const REANALYSIS_CRON = '0 */4 * * *'
-export const LAYER3_MIN_INTERVAL_MS = 15 * 60 * 1000
+export const LAYER3_MIN_INTERVAL_MS = 30 * 60 * 1000
 export const PRICE_BROADCAST_INTERVAL_MS = 5_000
 
 // ─── 3 configuraciones predefinidas del grid ──────────────────────────────

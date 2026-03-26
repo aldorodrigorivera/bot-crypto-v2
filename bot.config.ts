@@ -67,6 +67,9 @@ export const LAYER3_TRIGGER_IDLE_MINUTES = 45
 // Capa 3: Re-análisis periódico del agente (horas)
 export const LAYER3_REVIEW_HOURS = 4
 
+// Capa 3: Máximo de rebuilds consecutivos sin trades antes de pausar el bot
+export const LAYER3_MAX_CONSECUTIVE_REBUILDS = 3
+
 
 // ─── POSITION SIZING (v2) ───────────────────────────────────────────────
 // Tamaño base de cada orden en la moneda base (XRP)
