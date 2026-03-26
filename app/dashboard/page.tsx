@@ -15,6 +15,7 @@ import { TradesDataTable } from '@/components/dashboard/TradesDataTable'
 import { BacktestPanel } from '@/components/dashboard/BacktestPanel'
 import { IncubationPanel } from '@/components/dashboard/IncubationPanel'
 import { PerformanceComparisonPanel } from '@/components/dashboard/PerformanceComparisonPanel'
+import { LiquidityPanel } from '@/components/dashboard/LiquidityPanel'
 
 export default function DashboardPage() {
   // Conectar SSE y obtener datos iniciales
@@ -42,9 +43,10 @@ export default function DashboardPage() {
         <PerformanceComparisonPanel />
       </div>
 
-      {/* Grid + Capas + Mercado */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Grid + Liquidez v5 + Capas + Mercado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <GridPanel />
+        <LiquidityPanel />
         <LayersPanel />
         <MarketPanel />
       </div>

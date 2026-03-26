@@ -1,30 +1,75 @@
 import { MIN_LEVEL_SEPARATION, BINANCE_FEE_PERCENT } from '../config'
 import { SIZING_BASE_AMOUNT } from '../../bot.config'
-import type { GridLevel, GridConfig, OrderSide } from '../types'
+import type { GridLevel, GridConfig, GridBias, OrderSide } from '../types'
 
 export function buildGridLevels(
   currentPrice: number,
   config: GridConfig,
-  amountPerLevel: number
+  amountPerLevel: number,
+  bias?: GridBias
 ): GridLevel[] {
-  const { gridLevels, gridRangePercent } = config
-  const gridMin = currentPrice * (1 - gridRangePercent / 200)
-  const gridMax = currentPrice * (1 + gridRangePercent / 200)
-  const stepSize = (gridMax - gridMin) / (gridLevels - 1)
+  const { gridRangePercent } = config
+  const halfRange = gridRangePercent / 200
+  const gridMin = currentPrice * (1 - halfRange)
+  const gridMax = currentPrice * (1 + halfRange)
 
-  // Validar separación mínima
-  const stepPercent = (stepSize / currentPrice) * 100
-  if (stepPercent < MIN_LEVEL_SEPARATION) {
-    throw new Error(
-      `Separación de niveles (${stepPercent.toFixed(3)}%) menor al mínimo (${MIN_LEVEL_SEPARATION}%). Grid no rentable.`
-    )
+  // v5: Si hay bias activo con suficiente fuerza → grid asimétrico
+  const useAsymmetric = bias !== undefined && bias.strength >= 20 && bias.direction !== 'neutral'
+
+  if (!useAsymmetric) {
+    // ── Grid simétrico (comportamiento v4) ──────────────────────────────
+    const gridLevels = config.gridLevels
+    const stepSize = (gridMax - gridMin) / (gridLevels - 1)
+    const stepPercent = (stepSize / currentPrice) * 100
+    if (stepPercent < MIN_LEVEL_SEPARATION) {
+      throw new Error(
+        `Separación de niveles (${stepPercent.toFixed(3)}%) menor al mínimo (${MIN_LEVEL_SEPARATION}%). Grid no rentable.`
+      )
+    }
+    const levels: GridLevel[] = []
+    for (let i = 0; i < gridLevels; i++) {
+      const price = gridMin + i * stepSize
+      const side: OrderSide = price < currentPrice ? 'buy' : 'sell'
+      levels.push({ level: i, price, side, amount: amountPerLevel })
+    }
+    return levels
   }
 
+  // ── Grid asimétrico (v5) ─────────────────────────────────────────────
+  const { levelsAbove, levelsBelow, sizeMultiplierAbove, sizeMultiplierBelow } = bias
   const levels: GridLevel[] = []
-  for (let i = 0; i < gridLevels; i++) {
-    const price = gridMin + i * stepSize
-    const side: OrderSide = price < currentPrice ? 'buy' : 'sell'
-    levels.push({ level: i, price, side, amount: amountPerLevel })
+  let levelIndex = 0
+
+  // Niveles de compra (abajo del precio)
+  if (levelsBelow > 0) {
+    const buyStep = (currentPrice - gridMin) / levelsBelow
+    const buyStepPct = (buyStep / currentPrice) * 100
+    if (buyStepPct < MIN_LEVEL_SEPARATION) {
+      throw new Error(
+        `Separación de niveles buy (${buyStepPct.toFixed(3)}%) menor al mínimo con bias. Reducir levelsBelow o ampliar rango.`
+      )
+    }
+    const buyAmount = Math.max(amountPerLevel * sizeMultiplierBelow, SIZING_BASE_AMOUNT)
+    for (let i = levelsBelow; i >= 1; i--) {
+      const price = currentPrice - i * buyStep
+      levels.push({ level: levelIndex++, price, side: 'buy', amount: buyAmount })
+    }
+  }
+
+  // Niveles de venta (arriba del precio)
+  if (levelsAbove > 0) {
+    const sellStep = (gridMax - currentPrice) / levelsAbove
+    const sellStepPct = (sellStep / currentPrice) * 100
+    if (sellStepPct < MIN_LEVEL_SEPARATION) {
+      throw new Error(
+        `Separación de niveles sell (${sellStepPct.toFixed(3)}%) menor al mínimo con bias. Reducir levelsAbove o ampliar rango.`
+      )
+    }
+    const sellAmount = Math.max(amountPerLevel * sizeMultiplierAbove, SIZING_BASE_AMOUNT)
+    for (let i = 1; i <= levelsAbove; i++) {
+      const price = currentPrice + i * sellStep
+      levels.push({ level: levelIndex++, price, side: 'sell', amount: sellAmount })
+    }
   }
 
   return levels

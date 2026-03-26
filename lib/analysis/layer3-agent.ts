@@ -84,8 +84,20 @@ export async function runLayer3Agent(
       ? (gridRange / analysis.volatility24h * 100).toFixed(0)
       : 'N/A'
 
+    const bias = runtime.lastGridBias
+    const biasSection = bias ? `
+=== ANÁLISIS DE LIQUIDEZ (v5) ===
+Sesgo detectado: ${bias.direction} (strength: ${bias.strength}/100, confianza: ${bias.confidence}%)
+Order Book Imbalance: ratio ${bias.signals.obi.ratio.toFixed(2)}x → ${bias.signals.obi.bias} (${bias.signals.obi.strength}/100)
+CVD: delta ${bias.signals.cvd.delta > 0 ? '+' : ''}${bias.signals.cvd.delta.toFixed(0)} → ${bias.signals.cvd.trend}${bias.signals.cvd.lowDataWarning ? ' (datos limitados)' : ''}
+Funding Rate: ${bias.signals.fundingRate.unavailable ? 'no disponible' : `${(bias.signals.fundingRate.rate * 100).toFixed(4)}% — ${bias.signals.fundingRate.note}`}
+Grid asimétrico propuesto: ${bias.levelsAbove} niveles arriba / ${bias.levelsBelow} niveles abajo
+Cobertura del grid vs volatilidad: ${bias.signals.obi.ratio > 0 ? 'calculada' : 'N/A'}
+${bias.overrideActive ? `⚠️ Override activo: ${bias.overrideReason}` : ''}
+` : ''
+
     const context = `
-Par: ${analysis.pair}
+Par: ${analysis.pair}${biasSection}
 Precio actual: ${analysis.currentPrice.toFixed(4)}
 Cambio 24h: ${analysis.priceChange24h.toFixed(2)}%
 Volatilidad 24h (rango high-low): ${analysis.volatility24h.toFixed(2)}%

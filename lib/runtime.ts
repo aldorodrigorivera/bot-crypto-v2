@@ -18,6 +18,7 @@ function createInitialRuntime(): BotRuntime {
     layer3Action: 'keep',
     orderLimitReached: false,
     consecutiveLosses: 0,
+    consecutiveRebuilds: 0,
     peakProfitUSDC: 0,
     pauseUntil: null,
     lastBacktestFailed: false,
@@ -25,6 +26,8 @@ function createInitialRuntime(): BotRuntime {
     incubationSizeMultiplier: 1.0,
     pausedForDailyLimit: false,
     startSnapshot: null,
+    lastGridBias: null,
+    lastLiquidityAt: null,
   }
 }
 

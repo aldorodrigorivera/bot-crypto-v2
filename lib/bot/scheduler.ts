@@ -8,13 +8,18 @@ import { getActiveGridOrders, saveGridOrder, updateGridOrderStatus } from '../da
 import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
 import { getAppConfig, MAIN_LOOP_INTERVAL_MS, LAYER3_MIN_INTERVAL_MS, PRICE_BROADCAST_INTERVAL_MS } from '../config'
+import { LAYER3_MAX_CONSECUTIVE_REBUILDS } from '../../bot.config'
 import { runtime } from '../runtime'
 import { buildAndSaveSession } from './session'
 import { runBacktest } from '../backtesting/engine'
 import { loadIncubationState } from '../incubation/manager'
-import type { GridLevel, GridOrder } from '../types'
+import { runLiquidityAnalysis } from '../analysis/liquidityAnalyzer'
+import type { GridLevel, GridOrder, GridBias } from '../types'
+
+const LIQUIDITY_REANALYSIS_INTERVAL_MS = 2 * 60 * 60 * 1000  // 2 horas
 
 let gridLevels: GridLevel[] = []
+let currentBias: GridBias | undefined
 let priceBroadcastInterval: ReturnType<typeof setInterval> | null = null
 
 export async function startBot(options: {
@@ -87,9 +92,27 @@ export async function startBot(options: {
   const reserveBase = totalBase - activeBase
   const activeUSDC = balance.freeUSDC * 0.5
 
-  // Construir grid
+  // v5: Análisis de liquidez → GridBias para grid asimétrico
+  currentBias = undefined
+  try {
+    currentBias = await runLiquidityAnalysis(pair, currentPrice, gridConfig.gridLevels)
+    runtime.lastGridBias = currentBias
+    runtime.lastLiquidityAt = new Date()
+    broadcastSSE('liquidity_analysis_completed', {
+      direction: currentBias.direction,
+      strength: currentBias.strength,
+      confidence: currentBias.confidence,
+      levelsAbove: currentBias.levelsAbove,
+      levelsBelow: currentBias.levelsBelow,
+      summary: currentBias.summary,
+    })
+  } catch (err) {
+    logger.warn('[v5] LiquidityAnalyzer falló — usando grid simétrico:', err)
+  }
+
+  // Construir grid (simétrico si no hay bias, asimétrico si hay)
   const amountPerLevel = calculateAmountPerLevel(activeUSDC, gridConfig, currentPrice)
-  gridLevels = buildGridLevels(currentPrice, gridConfig, amountPerLevel)
+  gridLevels = buildGridLevels(currentPrice, gridConfig, amountPerLevel, currentBias)
 
   // Ajustar montos de sell para caber dentro del balance disponible de base currency
   // (el amountPerLevel se calcula desde USDT pero los sells necesitan XRP físico)
@@ -217,6 +240,7 @@ export async function startBot(options: {
     try {
       await runBotCycle(runtime, gridLevels)
       await checkLayer3Triggers()
+      await checkLiquidityReanalysis()
     } catch (err) {
       logger.error('Error en ciclo del bot:', err)
     }
@@ -286,6 +310,7 @@ export async function resumeBot(): Promise<void> {
   if (!runtime.isPaused) throw new Error('El bot no está pausado')
 
   runtime.isPaused = false
+  runtime.consecutiveRebuilds = 0
   if (runtime.botState) {
     runtime.botState.isPaused = false
     await saveBotState(runtime.botState).catch(() => {})
@@ -348,8 +373,22 @@ async function checkLayer3Triggers(): Promise<void> {
       }
       broadcastSSE('bot_status_change', { status: 'paused' })
     } else if (action === 'rebuild') {
-      await stopBot()
-      await startBot({ gridLevels: response.grid_adjustment.new_levels })
+      if ((runtime.consecutiveRebuilds ?? 0) >= LAYER3_MAX_CONSECUTIVE_REBUILDS) {
+        runtime.isPaused = true
+        if (runtime.botState) {
+          runtime.botState.isPaused = true
+          await saveBotState(runtime.botState).catch(() => {})
+        }
+        const msg = `Capa 3 recomendó rebuild ${(runtime.consecutiveRebuilds ?? 0) + 1} veces consecutivas sin trades — bot pausado. Reanuda manualmente cuando el mercado mejore.`
+        logger.warn(`[Layer3] ${msg}`)
+        broadcastSSE('risk_alert', { message: msg })
+        broadcastSSE('bot_status_change', { status: 'paused', reason: 'consecutive_rebuilds_limit' })
+      } else {
+        runtime.consecutiveRebuilds = (runtime.consecutiveRebuilds ?? 0) + 1
+        logger.info(`[Layer3] Rebuild #${runtime.consecutiveRebuilds}/${LAYER3_MAX_CONSECUTIVE_REBUILDS}`)
+        await stopBot()
+        await startBot({ gridLevels: response.grid_adjustment.new_levels })
+      }
     } else if (action === 'shift_up' || action === 'shift_down') {
       const shiftPct = (response.grid_adjustment.shift_percent ?? 1) / 100
       const direction = action === 'shift_up' ? 1 : -1
@@ -384,5 +423,48 @@ async function checkLayer3Triggers(): Promise<void> {
     }
   } catch (err) {
     logger.error('Error en Capa 3:', err)
+  }
+}
+
+async function checkLiquidityReanalysis(): Promise<void> {
+  if (!runtime.isRunning || !runtime.currentConfig) return
+
+  const now = new Date()
+  const lastAt = runtime.lastLiquidityAt
+  if (lastAt && now.getTime() - lastAt.getTime() < LIQUIDITY_REANALYSIS_INTERVAL_MS) return
+
+  const config = getAppConfig()
+  const pair = config.bot.pair
+
+  try {
+    const price = runtime.botState
+      ? (runtime.botState.gridMin + runtime.botState.gridMax) / 2
+      : await fetchCurrentPrice(pair)
+
+    const prevDirection = currentBias?.direction ?? 'neutral'
+    const newBias = await runLiquidityAnalysis(pair, price, runtime.currentConfig.gridLevels)
+
+    runtime.lastGridBias = newBias
+    runtime.lastLiquidityAt = now
+    currentBias = newBias
+
+    broadcastSSE('liquidity_analysis_completed', {
+      direction: newBias.direction,
+      strength: newBias.strength,
+      confidence: newBias.confidence,
+      levelsAbove: newBias.levelsAbove,
+      levelsBelow: newBias.levelsBelow,
+      summary: newBias.summary,
+    })
+
+    // Si la dirección cambió → rebuild del grid con el nuevo bias
+    if (newBias.direction !== prevDirection && newBias.strength >= 20) {
+      logger.info(`[v5] Sesgo cambió ${prevDirection} → ${newBias.direction} — reconstruyendo grid`)
+      broadcastSSE('grid_bias_changed', { from: prevDirection, to: newBias.direction, strength: newBias.strength })
+      await stopBot()
+      await startBot({ gridLevels: runtime.currentConfig.gridLevels })
+    }
+  } catch (err) {
+    logger.warn('[v5] Error en re-análisis de liquidez:', err)
   }
 }

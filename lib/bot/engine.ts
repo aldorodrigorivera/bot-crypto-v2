@@ -334,6 +334,7 @@ export async function runBotCycle(
           }
         } else if (profit > 0) {
           runtime.consecutiveLosses = 0
+          runtime.consecutiveRebuilds = 0
           const currentTotalProfit = runtime.botState?.totalProfitUSDC ?? 0
           if (currentTotalProfit > runtime.peakProfitUSDC) {
             runtime.peakProfitUSDC = currentTotalProfit

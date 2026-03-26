@@ -24,6 +24,8 @@ export type SSEEventType =
   | 'incubation_phase_change'
   | 'incubation_completed'
   | 'incubation_aborted'
+  | 'liquidity_analysis_completed'
+  | 'grid_bias_changed'
 
 // ─── Configuración del Grid ────────────────────────────────────────────────
 export interface GridConfig {
@@ -484,6 +486,7 @@ export interface BotRuntime {
   layer3Action: string
   orderLimitReached: boolean  // true cuando se alcanzaron 20 órdenes abiertas
   consecutiveLosses: number
+  consecutiveRebuilds: number
   peakProfitUSDC: number
   pauseUntil: Date | null
   // v3 — backtest e incubación
@@ -499,6 +502,9 @@ export interface BotRuntime {
     analysis: MarketAnalysis | null
     claudeRecommendation: Layer3AgentResponse | null
   } | null
+  // v5: liquidez
+  lastGridBias: GridBias | null
+  lastLiquidityAt: Date | null
 }
 
 // ─── Preview de Inicio ────────────────────────────────────────────────────
@@ -553,4 +559,88 @@ export interface SizeMultiplierInput {
   layer3SizingBias: OrderSizingBias
   isNearCenter: boolean
   centralLevelsPercent: number
+}
+
+// ─── v5: Liquidity-Biased Grid ────────────────────────────────────────────
+
+export interface OBIResult {
+  bidVolume: number         // USDT total en top 10 bids
+  askVolume: number         // USDT total en top 10 asks
+  ratio: number             // bidVolume / askVolume
+  bias: 'bullish' | 'bearish' | 'neutral'
+  strength: number          // 0-100
+}
+
+export interface CVDResult {
+  buyVolume: number         // volumen de market buys
+  sellVolume: number        // volumen de market sells
+  delta: number             // buyVolume - sellVolume
+  cumulativeDelta: number   // delta acumulado
+  trend: 'accumulation' | 'distribution' | 'neutral'
+  strength: number          // 0-100
+  lowDataWarning: boolean   // true si hay < 100 trades disponibles
+}
+
+export interface LiquidityLevel {
+  price: number
+  volume: number
+  type: 'support' | 'resistance' | 'neutral'
+  strength: number                   // 0-100: cuántas veces actuó como soporte/resistencia
+  distanceFromCurrent: number        // % de distancia del precio actual
+}
+
+export interface LiquidityMap {
+  levels: LiquidityLevel[]
+  nearestResistance: LiquidityLevel | null
+  nearestSupport: LiquidityLevel | null
+  currentZone: 'near_resistance' | 'near_support' | 'in_range'
+}
+
+export interface FundingRateResult {
+  rate: number              // tasa actual (ej: 0.0003 = 0.03%)
+  interpretation: 'longs_paying' | 'shorts_paying' | 'neutral'
+  riskLevel: 'low' | 'medium' | 'high'
+  note: string              // explicación en lenguaje natural
+  unavailable?: boolean     // true si el endpoint no está disponible (testnet/spot)
+}
+
+export interface GridBias {
+  direction: 'bullish' | 'bearish' | 'neutral'
+  strength: number              // 0-100
+  confidence: number            // 0-100: % de señales alineadas
+  levelsAbove: number           // niveles de venta a colocar
+  levelsBelow: number           // niveles de compra a colocar
+  densityZone: {
+    priceMin: number
+    priceMax: number
+    levelConcentration: number  // % de niveles a concentrar en esta zona
+  }
+  sizeMultiplierAbove: number   // multiplicador de tamaño para órdenes arriba
+  sizeMultiplierBelow: number   // multiplicador de tamaño para órdenes abajo
+  signals: {
+    obi: OBIResult
+    cvd: CVDResult
+    liquidityMap: LiquidityMap
+    fundingRate: FundingRateResult
+  }
+  overrideActive: boolean
+  overrideReason?: string
+  summary: string               // resumen en lenguaje natural para Claude
+}
+
+export interface LiquiditySnapshot {
+  pair: string
+  obiRatio: number
+  obiDirection: string
+  cvdDelta: number
+  cvdTrend: string
+  fundingRate: number
+  biasDirection: string
+  biasStrength: number
+  confidence: number
+  levelsAbove: number
+  levelsBelow: number
+  overrideActive: boolean
+  overrideReason?: string
+  recordedAt: Date
 }

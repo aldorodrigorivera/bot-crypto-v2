@@ -85,6 +85,17 @@ interface BotStore {
   // Alertas de riesgo acumuladas
   riskAlerts: { id: number; message: string; detail?: string; timestamp: number }[]
 
+  // v5: Liquidez
+  liquidityBiasDirection: 'bullish' | 'bearish' | 'neutral'
+  liquidityBiasStrength: number
+  liquidityConfidence: number
+  liquidityLevelsAbove: number
+  liquidityLevelsBelow: number
+  liquidityLastAnalysis: number | null   // timestamp ms
+  liquidityOverrideActive: boolean
+  liquidityOverrideReason: string | undefined
+  liquiditySummary: string
+
   // Acciones
   updateFromSSE: (event: SSEEvent) => void
   updateFromStatus: (data: StatusResponse) => void
@@ -137,6 +148,16 @@ export const useBotStore = create<BotStore>((set, get) => ({
   lastSession: null,
 
   riskAlerts: [],
+
+  liquidityBiasDirection: 'neutral',
+  liquidityBiasStrength: 0,
+  liquidityConfidence: 0,
+  liquidityLevelsAbove: 0,
+  liquidityLevelsBelow: 0,
+  liquidityLastAnalysis: null,
+  liquidityOverrideActive: false,
+  liquidityOverrideReason: undefined,
+  liquiditySummary: '',
 
   backtest: {
     passed: false,
@@ -372,6 +393,37 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
       case 'incubation_aborted': {
         set(s => ({ incubation: { ...s.incubation, isActive: false } }))
+        break
+      }
+
+      case 'liquidity_analysis_completed': {
+        const d = event.data as {
+          direction: 'bullish' | 'bearish' | 'neutral'
+          strength: number
+          confidence: number
+          levelsAbove: number
+          levelsBelow: number
+          summary: string
+          overrideActive?: boolean
+          overrideReason?: string
+        }
+        set({
+          liquidityBiasDirection: d.direction,
+          liquidityBiasStrength: d.strength,
+          liquidityConfidence: d.confidence,
+          liquidityLevelsAbove: d.levelsAbove,
+          liquidityLevelsBelow: d.levelsBelow,
+          liquidityLastAnalysis: Date.now(),
+          liquidityOverrideActive: d.overrideActive ?? false,
+          liquidityOverrideReason: d.overrideReason,
+          liquiditySummary: d.summary,
+        })
+        break
+      }
+
+      case 'grid_bias_changed': {
+        const d = event.data as { to: 'bullish' | 'bearish' | 'neutral'; strength: number }
+        set({ liquidityBiasDirection: d.to, liquidityBiasStrength: d.strength })
         break
       }
     }

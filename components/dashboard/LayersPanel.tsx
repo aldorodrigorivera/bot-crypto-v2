@@ -4,7 +4,8 @@ import { useBotStore } from '@/store/bot'
 import { useShallow } from 'zustand/react/shallow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Brain, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { Brain, AlertTriangle, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function LayersPanel() {
@@ -41,6 +42,17 @@ export function LayersPanel() {
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Brain className="h-4 w-4" />
           Agente IA (Capa 3)
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3 w-3 text-muted-foreground/50 cursor-help hover:text-muted-foreground transition-colors" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              <p className="font-semibold">Capa 3 — Agente Claude AI</p>
+              <p className="text-muted-foreground">Análisis profundo del mercado usando Claude (claude-sonnet-4-6). Evalúa RSI, MACD, Bollinger Bands, VWAP y tendencia para recomendar ajustes al grid.</p>
+              <p className="text-muted-foreground mt-1">Se ejecuta cada 30 min o cuando se detecta volatilidad extrema o inactividad prolongada.</p>
+              <p className="text-muted-foreground mt-1">Después de 3 recomendaciones consecutivas de reconstruir sin trades, el bot se pausa automáticamente.</p>
+            </TooltipContent>
+          </Tooltip>
         </CardTitle>
         {botStatus === 'paused' && (
           <Badge variant="destructive" className="text-xs animate-pulse">
@@ -50,26 +62,57 @@ export function LayersPanel() {
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Sesgo */}
-        <div className={cn('flex items-center gap-2 rounded-lg border px-3 py-2', bias.color)}>
-          <BiasIcon className="h-4 w-4" />
-          <div>
-            <p className="text-xs text-muted-foreground">Sesgo del mercado</p>
-            <p className="font-semibold">{bias.label}</p>
-          </div>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={cn('flex items-center gap-2 rounded-lg border px-3 py-2 cursor-default', bias.color)}>
+              <BiasIcon className="h-4 w-4" />
+              <div>
+                <p className="text-xs text-muted-foreground">Sesgo del mercado</p>
+                <p className="font-semibold">{bias.label}</p>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs">
+            <p className="font-semibold">Sesgo según indicadores técnicos</p>
+            <p className="text-muted-foreground">Dirección general del mercado detectada por Claude al analizar indicadores de mediano plazo (RSI, MACD, tendencia de precio).</p>
+            <p className="text-muted-foreground mt-1">Difiere del Análisis de Liquidez (que usa order book) — ambos pueden divergir y eso es normal.</p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Acción */}
-        <div className="rounded-lg border border-border/50 px-3 py-2 bg-muted/30">
-          <p className="text-xs text-muted-foreground">Última recomendación</p>
-          <p className="font-medium text-sm">{actionLabels[layer3LastAction] ?? layer3LastAction}</p>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="rounded-lg border border-border/50 px-3 py-2 bg-muted/30 cursor-default">
+              <p className="text-xs text-muted-foreground">Última recomendación</p>
+              <p className="font-medium text-sm">{actionLabels[layer3LastAction] ?? layer3LastAction}</p>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs">
+            <p className="font-semibold">Acción recomendada por Claude</p>
+            <p className="text-muted-foreground"><span className="text-foreground">Mantener:</span> condiciones normales, grid actual es adecuado.</p>
+            <p className="text-muted-foreground"><span className="text-foreground">Reconstruir:</span> recrea el grid desde cero con precio y análisis actualizados.</p>
+            <p className="text-muted-foreground"><span className="text-foreground">Pausar:</span> condiciones de riesgo alto — el bot se detiene temporalmente.</p>
+            <p className="text-muted-foreground"><span className="text-foreground">Desplazar arriba/abajo:</span> el precio se alejó del centro del grid.</p>
+            <p className="text-muted-foreground"><span className="text-foreground">Ampliar/Reducir rango:</span> la volatilidad cambió significativamente.</p>
+          </TooltipContent>
+        </Tooltip>
 
         {/* Órdenes saltadas */}
         {ordersSkippedToday > 0 && (
-          <div className="flex items-center gap-2 text-yellow-600 text-xs">
-            <AlertTriangle className="h-3 w-3" />
-            <span>{ordersSkippedToday} órdenes filtradas hoy</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 text-yellow-600 text-xs cursor-default">
+                <AlertTriangle className="h-3 w-3" />
+                <span>{ordersSkippedToday} órdenes filtradas hoy</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              <p className="font-semibold">Órdenes bloqueadas por las Capas de análisis</p>
+              <p className="text-muted-foreground"><span className="text-foreground">Capa 1:</span> Risk Score bajo (volatilidad extrema, desequilibrio en el libro de órdenes, volumen anómalo).</p>
+              <p className="text-muted-foreground"><span className="text-foreground">Capa 2:</span> Probabilidad técnica insuficiente (RSI, MACD, Bollinger no favorables).</p>
+              <p className="text-muted-foreground mt-1">Las órdenes filtradas son órdenes que NO se colocaron en Binance para proteger el capital.</p>
+            </TooltipContent>
+          </Tooltip>
         )}
       </CardContent>
     </Card>
