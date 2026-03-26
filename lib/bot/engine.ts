@@ -111,7 +111,9 @@ export async function runBotCycle(
     try {
       closedOrders = await fetchClosedOrders(pair)
     } catch (err) {
-      logger.error('Error obteniendo órdenes cerradas:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      const isTimeout = msg.includes('timed out') || msg.includes('RequestTimeout')
+      logger[isTimeout ? 'warn' : 'error'](`Error obteniendo órdenes cerradas${isTimeout ? ' (timeout — reintentando en próximo ciclo)' : ''}:`, msg)
       return { tradesExecuted: 0, ordersSkipped: 0, currentPrice }
     }
   }

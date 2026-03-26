@@ -97,7 +97,7 @@ const columns: ColumnDef<TradeRecord>[] = [
     accessorKey: 'usdcValue',
     header: ({ column }) => (
       <button className="flex items-center" onClick={() => column.toggleSorting()}>
-        Valor USDC <SortIcon sorted={column.getIsSorted()} />
+        Valor USDT <SortIcon sorted={column.getIsSorted()} />
       </button>
     ),
     cell: ({ getValue }) => (

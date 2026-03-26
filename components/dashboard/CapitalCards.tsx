@@ -43,75 +43,78 @@ function MetricCard({ title, value, sub, icon, valueClass, tooltip }: MetricCard
 
 export function CapitalCards() {
   const {
-    totalBase, totalUSDC, totalProfitUSDC,
+    totalBase, freeBase, totalUSDT, totalProfitUSDT,
     todayTrades, totalTrades, ordersSkippedToday,
-    botUSDC, pair,
+    botUSDT, pair,
   } = useBotStore(useShallow(s => ({
     totalBase: s.totalBase,
-    totalUSDC: s.totalUSDC,
-    totalProfitUSDC: s.totalProfitUSDC,
+    freeBase: s.freeBase,
+    totalUSDT: s.totalUSDC,
+    totalProfitUSDT: s.totalProfitUSDC,
     todayTrades: s.todayTrades,
     totalTrades: s.totalTrades,
     ordersSkippedToday: s.ordersSkippedToday,
-    botUSDC: s.botUSDC,
+    botUSDT: s.botUSDC,
     pair: s.pair,
   })))
 
   const [base] = pair.split('/')
-  const totalUSDCLive = totalUSDC + totalProfitUSDC
-  const profitSign = totalProfitUSDC >= 0 ? '+' : ''
-  const realBotPercent = botUSDC !== null && totalUSDCLive > 0
-    ? Math.round((botUSDC / totalUSDCLive) * 100)
-    : null
+  const totalUSDTLive = totalUSDT + totalProfitUSDT
+  const profitSign = totalProfitUSDT >= 0 ? '+' : ''
+  // botUSDT = freeUSDT × 50% siempre → porcentaje del libre es siempre 50%
+  const freeUSDT = botUSDT !== null ? botUSDT * 2 : null
+  const realBotPercentDisplay = botUSDT !== null ? '50' : '—'
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       <MetricCard
         title={`Total ${base}`}
         value={totalBase.toFixed(2)}
-        sub={base}
+        sub={freeBase < totalBase ? `${freeBase.toFixed(2)} libre · ${(totalBase - freeBase).toFixed(2)} bloqueado` : base}
         icon={<Wallet className="h-4 w-4" />}
         tooltip={
           <div className="space-y-1">
             <p className="font-semibold">Balance total de {base}</p>
-            <p className="text-muted-foreground">Cantidad total de {base} en tu cuenta de Binance, incluyendo la reserva intocable (80%) y el capital activo (20%).</p>
+            <p className="text-muted-foreground">Total: incluye {base} libre + bloqueado en órdenes abiertas.</p>
+            <p className="text-muted-foreground">Libre: {freeBase.toFixed(4)} {base} — disponible para nuevas órdenes sell.</p>
+            <p className="text-muted-foreground">Bloqueado: {(totalBase - freeBase).toFixed(4)} {base} — reservado en órdenes sell activas.</p>
           </div>
         }
       />
       <MetricCard
-        title="Total USDC"
-        value={`$${totalUSDCLive.toFixed(2)}`}
-        sub={totalProfitUSDC !== 0 ? `${profitSign}${totalProfitUSDC.toFixed(4)} ganancia` : 'balance total'}
+        title="Total USDT"
+        value={`$${totalUSDTLive.toFixed(2)}`}
+        sub={totalProfitUSDT !== 0 ? `${profitSign}${totalProfitUSDT.toFixed(4)} ganancia` : 'balance total'}
         icon={<Banknote className="h-4 w-4" />}
-        valueClass={totalProfitUSDC > 0 ? 'text-green-400' : totalProfitUSDC < 0 ? 'text-red-400' : undefined}
+        valueClass={totalProfitUSDT > 0 ? 'text-green-400' : totalProfitUSDT < 0 ? 'text-red-400' : undefined}
         tooltip={
           <div className="space-y-1">
-            <p className="font-semibold">USDC en cuenta</p>
-            <p className="text-muted-foreground">Balance USDC del exchange más las ganancias acumuladas desde el inicio del bot.</p>
+            <p className="font-semibold">USDT en cuenta</p>
+            <p className="text-muted-foreground">Balance USDT del exchange más las ganancias acumuladas desde el inicio del bot.</p>
             <p className="text-muted-foreground">Fórmula: <span className="text-foreground font-mono">balance + ganancias</span></p>
           </div>
         }
       />
       <MetricCard
-        title="USDC para Bot"
-        value={botUSDC !== null ? `$${botUSDC.toFixed(2)}` : '—'}
-        sub={botUSDC !== null ? `${realBotPercent}% del capital total ($${botUSDC.toFixed(2)})` : 'Clic en "Actualizar USDC para Bot"'}
+        title="USDT para Bot"
+        value={botUSDT !== null ? `$${botUSDT.toFixed(2)}` : '—'}
+        sub={botUSDT !== null ? `${realBotPercentDisplay}% del USDT libre ($${freeUSDT!.toFixed(2)} libres · $${totalUSDT.toFixed(2)} total)` : 'Cargando...'}
         icon={<PiggyBank className="h-4 w-4" />}
         valueClass="text-blue-400"
         tooltip={
           <div className="space-y-1">
             <p className="font-semibold">Capital asignado al bot</p>
-            <p className="text-muted-foreground">USDC real que el bot usa para el grid ({realBotPercent ?? '—'}% del total). Corresponde al 50% del saldo libre en Binance.</p>
-            <p className="text-muted-foreground">Fórmula: <span className="text-foreground font-mono">freeUSDC × 50%</span></p>
+            <p className="text-muted-foreground">50% del USDT libre en Binance. El resto puede estar bloqueado en órdenes abiertas.</p>
+            <p className="text-muted-foreground">Fórmula: <span className="text-foreground font-mono">freeUSDT × 50%</span></p>
           </div>
         }
       />
       <MetricCard
         title="Ganancia Total"
-        value={`${totalProfitUSDC >= 0 ? '+' : ''}${totalProfitUSDC.toFixed(4)} USDC`}
+        value={`${totalProfitUSDT >= 0 ? '+' : ''}${totalProfitUSDT.toFixed(4)} USDT`}
         sub="desde inicio"
         icon={<TrendingUp className="h-4 w-4" />}
-        valueClass={totalProfitUSDC >= 0 ? 'text-green-500' : 'text-red-500'}
+        valueClass={totalProfitUSDT >= 0 ? 'text-green-500' : 'text-red-500'}
         tooltip={
           <div className="space-y-1">
             <p className="font-semibold">Ganancia neta acumulada</p>

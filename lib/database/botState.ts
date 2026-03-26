@@ -21,7 +21,7 @@ function toBotState(obj: Parse.Object): BotState {
     startedAt: obj.get('startedAt') ?? new Date(),
     lastActiveAt: obj.get('lastActiveAt') ?? new Date(),
     stopReason: obj.get('stopReason'),
-    pair: obj.get('pair') ?? 'XRP/USDC',
+    pair: obj.get('pair') ?? 'XRP/USDT',
     initialPrice: obj.get('initialPrice') ?? 0,
     capitalEfficiencyScore: obj.get('capitalEfficiencyScore'),
     agentBias: obj.get('agentBias'),

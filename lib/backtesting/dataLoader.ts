@@ -1,4 +1,4 @@
-import { getExchange } from '../exchange/binance'
+import { getPublicExchange } from '../exchange/binance'
 import { logger } from '../logger'
 import type { OHLCVCandle } from '../types'
 
@@ -29,7 +29,7 @@ export async function loadHistoricalData(config: DataLoaderConfig): Promise<OHLC
     return cached.data
   }
 
-  const exchange = getExchange()
+  const exchange = getPublicExchange()
   const sinceMs = now - config.days * 24 * 60 * 60 * 1000
   const allCandles: OHLCVCandle[] = []
   let since = sinceMs

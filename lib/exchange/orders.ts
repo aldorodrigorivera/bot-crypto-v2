@@ -68,8 +68,8 @@ export async function readAccountBalance(pair: string): Promise<AccountBalance> 
     totalBase: (balance[base]?.total as number) ?? 0,
     freeBase: (balance[base]?.free as number) ?? 0,
     usedBase: (balance[base]?.used as number) ?? 0,
-    totalUSDC: (balance['USDC']?.total as number) ?? 0,
-    freeUSDC: (balance['USDC']?.free as number) ?? 0,
+    totalUSDC: (balance['USDT']?.total as number) ?? 0,
+    freeUSDC: (balance['USDT']?.free as number) ?? 0,
   }
 }
 
@@ -195,7 +195,9 @@ export async function fetchOpenOrders(pair: string): Promise<ExchangeOrder[]> {
 export async function fetchClosedOrders(pair: string): Promise<ExchangeOrder[]> {
   if (isMock()) return []
   const exchange = getExchange()
-  const orders = await exchange.fetchClosedOrders(pair, undefined, 50)
+  // Buscar solo las últimas 2 horas para evitar timeouts en testnet (allOrders es muy lento con historial largo)
+  const since = Date.now() - 2 * 60 * 60 * 1000
+  const orders = await exchange.fetchClosedOrders(pair, since, 50)
   return orders.map((o: any) => ({
     id: o.id,
     side: o.side as OrderSide,

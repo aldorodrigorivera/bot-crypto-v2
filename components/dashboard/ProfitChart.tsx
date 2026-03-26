@@ -47,7 +47,7 @@ export const ProfitChart = memo(function ProfitChart() {
     labels,
     datasets: [
       {
-        label: 'Ganancia USDC',
+        label: 'Ganancia USDT',
         data: profits,
         borderColor: lineColor,
         backgroundColor: fillColor,
@@ -77,7 +77,7 @@ export const ProfitChart = memo(function ProfitChart() {
         callbacks: {
           label: (ctx) => {
             const val = Number(ctx.raw)
-            return ` ${val >= 0 ? '+' : ''}${val.toFixed(4)} USDC`
+            return ` ${val >= 0 ? '+' : ''}${val.toFixed(4)} USDT`
           },
         },
       },
@@ -110,8 +110,8 @@ export const ProfitChart = memo(function ProfitChart() {
   }
 
   const profitLabel = totalProfitUSDC >= 0
-    ? `+${totalProfitUSDC.toFixed(4)} USDC`
-    : `${totalProfitUSDC.toFixed(4)} USDC`
+    ? `+${totalProfitUSDC.toFixed(4)} USDT`
+    : `${totalProfitUSDC.toFixed(4)} USDT`
 
   const statusLabel = botStatus === 'running'
     ? 'sesión actual'

@@ -7,16 +7,20 @@ import {
 } from '@/components/ui/dialog'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Play, Brain, TriangleAlert } from 'lucide-react'
+import { Loader2, Play, Brain, TriangleAlert, TrendingUp, TrendingDown, Minus, Activity, BarChart2, DollarSign } from 'lucide-react'
 import type { MarketAnalysis, Layer3AgentResponse } from '@/lib/types'
 
 interface StartModalProps {
   open: boolean
   onClose: () => void
-  onConfirm: (opts: { gridLevels: number; gridRangePercent: number }) => Promise<void>
+  onConfirm: (
+    opts: { gridLevels: number; gridRangePercent: number },
+    forceStart?: boolean
+  ) => Promise<{ ok: boolean; backtestFailed?: boolean; reasons?: string[] }>
   analysis: MarketAnalysis | null
   claudeRecommendation: Layer3AgentResponse | null
   loading?: boolean
+  loadingForce?: boolean
 }
 
 const BIAS_LABEL: Record<string, string> = {
@@ -32,7 +36,7 @@ const BIAS_CLASS: Record<string, string> = {
 }
 
 export function StartModal({
-  open, onClose, onConfirm, analysis, claudeRecommendation, loading,
+  open, onClose, onConfirm, analysis, claudeRecommendation, loading, loadingForce,
 }: StartModalProps) {
   // Valores sugeridos por Claude (clamp al rango de los sliders)
   const claudeLevels = claudeRecommendation
@@ -49,6 +53,12 @@ export function StartModal({
     claudeRange ?? analysis?.recommendedConfig.gridRangePercent ?? 6
   )
   const [starting, setStarting] = useState(false)
+  const [backtestError, setBacktestError] = useState<{ reasons: string[] } | null>(null)
+
+  // Limpiar error al abrir/cerrar modal
+  useEffect(() => {
+    if (!open) setBacktestError(null)
+  }, [open])
 
   // Actualizar sliders cuando llega el análisis (modal abre antes que los datos)
   useEffect(() => {
@@ -57,11 +67,16 @@ export function StartModal({
     setGridRange(claudeRange ?? analysis.recommendedConfig.gridRangePercent)
   }, [analysis, claudeRecommendation]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleConfirm() {
+  async function handleConfirm(forceStart = false) {
     setStarting(true)
+    setBacktestError(null)
     try {
-      await onConfirm({ gridLevels, gridRangePercent: gridRange })
-      onClose()
+      const result = await onConfirm({ gridLevels, gridRangePercent: gridRange }, forceStart)
+      if (result.ok) {
+        onClose()
+      } else if (result.backtestFailed) {
+        setBacktestError({ reasons: result.reasons ?? [] })
+      }
     } finally {
       setStarting(false)
     }
@@ -72,7 +87,7 @@ export function StartModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Play className="h-5 w-5 text-green-500" />
@@ -115,30 +130,115 @@ export function StartModal({
                   {claudeRecommendation.reasoning}
                 </p>
                 {claudeRecommendation.risk_flags.length > 0 && (
-                  <div className="flex items-start gap-1.5 pt-0.5">
-                    <TriangleAlert className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                      {claudeRecommendation.risk_flags.join(' · ')}
-                    </p>
+                  <div className="pt-0.5 space-y-1">
+                    {claudeRecommendation.risk_flags.map((flag, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <TriangleAlert className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400">{flag}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             )}
 
             {/* Análisis de mercado base */}
-            <div className="rounded-lg border border-border/50 p-3 bg-muted/30 space-y-1">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Análisis de mercado</p>
+            <div className="rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
+                <p className="text-sm font-medium">Condiciones de mercado</p>
                 <Badge variant="outline">{analysis.recommendedConfig.label}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground">{analysis.configReason}</p>
-              <div className="flex gap-3 pt-1 text-xs">
-                <span className="text-muted-foreground">
-                  Volatilidad: <strong className="text-foreground">{analysis.volatility24h.toFixed(1)}%</strong>
-                </span>
-                <span className="text-muted-foreground">
-                  Tendencia: <strong className="text-foreground">{analysis.trend}</strong>
-                </span>
+              <p className="text-xs text-muted-foreground px-3 py-2 border-b border-border/30">
+                {analysis.configReason}
+              </p>
+
+              <div className="divide-y divide-border/30">
+                {/* Precio */}
+                <div className="flex items-start gap-2 px-3 py-2">
+                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">Precio</span>
+                      <span className={`text-xs font-semibold ${analysis.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {analysis.priceChange24h >= 0 ? '+' : ''}{analysis.priceChange24h.toFixed(2)}% 24h
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Rango 24h: ${analysis.price24hLow.toFixed(4)} – ${analysis.price24hHigh.toFixed(4)}.{' '}
+                      {analysis.priceChange24h >= 1 ? 'El precio sube con fuerza — bueno para sells del grid.' :
+                       analysis.priceChange24h <= -1 ? 'El precio cae — más oportunidades de compra en el grid.' :
+                       'Precio lateral — condición ideal para grid trading.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Volatilidad */}
+                <div className="flex items-start gap-2 px-3 py-2">
+                  <Activity className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">Volatilidad 24h</span>
+                      <span className={`text-xs font-semibold ${
+                        analysis.volatility24h > 15 ? 'text-red-500' :
+                        analysis.volatility24h > 6 ? 'text-yellow-500' : 'text-green-500'
+                      }`}>{analysis.volatility24h.toFixed(1)}%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {analysis.volatility24h > 15
+                        ? `Volatilidad extrema — el precio puede moverse más del ${analysis.volatility24h.toFixed(0)}% en un día. El grid estrecho (${analysis.recommendedConfig.gridRangePercent}%) reduce el riesgo de que el precio escape del rango.`
+                        : analysis.volatility24h > 6
+                        ? `Volatilidad alta — el precio se mueve activamente, generando más fills pero también más riesgo de slippage.`
+                        : `Volatilidad baja — mercado lateral, ideal para grid. Pocos fills pero alta precisión.`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tendencia */}
+                <div className="flex items-start gap-2 px-3 py-2">
+                  {analysis.trend === 'bullish'
+                    ? <TrendingUp className="h-3.5 w-3.5 text-green-500 shrink-0 mt-0.5" />
+                    : analysis.trend === 'bearish'
+                    ? <TrendingDown className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+                    : <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">Tendencia</span>
+                      <span className={`text-xs font-semibold capitalize ${
+                        analysis.trend === 'bullish' ? 'text-green-500' :
+                        analysis.trend === 'bearish' ? 'text-red-500' : 'text-muted-foreground'
+                      }`}>{analysis.trend === 'bullish' ? 'Alcista' : analysis.trend === 'bearish' ? 'Bajista' : 'Lateral'} · {analysis.trendStrength}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      MA20: {analysis.priceVsMA20 >= 0 ? '+' : ''}{analysis.priceVsMA20.toFixed(2)}% · MA50: {analysis.priceVsMA50 >= 0 ? '+' : ''}{analysis.priceVsMA50.toFixed(2)}%.{' '}
+                      {Math.abs(analysis.priceVsMA20) < 1 && Math.abs(analysis.priceVsMA50) < 1
+                        ? 'Precio cerca de sus medias — zona neutral, grid funciona bien en ambas direcciones.'
+                        : analysis.priceVsMA20 < -2
+                        ? 'Precio bajo sus medias móviles — presión bajista. El bot comprará más barato si el precio cae.'
+                        : 'Precio sobre sus medias móviles — momentum positivo. Sells del grid se ejecutarán con más frecuencia.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Volumen */}
+                <div className="flex items-start gap-2 px-3 py-2">
+                  <BarChart2 className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">Volumen 24h</span>
+                      <span className={`text-xs font-semibold ${analysis.volumeChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {analysis.volumeChange >= 0 ? '+' : ''}{analysis.volumeChange.toFixed(0)}% vs promedio
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {(analysis.volume24h / 1_000_000).toFixed(2)}M XRP negociados.{' '}
+                      {analysis.volumeChange > 20
+                        ? 'Volumen elevado — alta liquidez, fills rápidos y con poco slippage.'
+                        : analysis.volumeChange < -20
+                        ? 'Volumen bajo — poca liquidez, las órdenes tardan más en llenarse. Considera tamaños de orden más pequeños.'
+                        : 'Volumen normal — condiciones típicas de mercado.'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -223,12 +323,35 @@ export function StartModal({
           </p>
         )}
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={starting}>
+        {backtestError && (
+          <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 space-y-1">
+            <div className="flex items-center gap-1.5">
+              <TriangleAlert className="h-4 w-4 text-yellow-500 shrink-0" />
+              <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Backtest no aprobado</p>
+            </div>
+            <ul className="text-xs text-yellow-600 dark:text-yellow-400 list-disc list-inside space-y-0.5">
+              {backtestError.reasons.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 flex-wrap">
+          <Button variant="outline" onClick={onClose} disabled={starting || loadingForce}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={starting} className="gap-2">
-            {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+          {backtestError && (
+            <Button
+              variant="outline"
+              onClick={() => handleConfirm(true)}
+              disabled={starting || loadingForce}
+              className="gap-2 text-yellow-600 border-yellow-500/40 hover:bg-yellow-500/10"
+            >
+              {(starting || loadingForce) ? <Loader2 className="h-4 w-4 animate-spin" /> : <TriangleAlert className="h-4 w-4" />}
+              Forzar Inicio
+            </Button>
+          )}
+          <Button onClick={() => handleConfirm(false)} disabled={starting || loadingForce} className="gap-2">
+            {(starting || loadingForce) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             {starting ? 'Iniciando...' : 'Iniciar Bot'}
           </Button>
         </DialogFooter>

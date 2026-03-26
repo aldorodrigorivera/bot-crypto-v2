@@ -21,6 +21,7 @@ export async function GET() {
     const activePercent = config.bot.activePercent / 100
     const liveBalance = balance ? {
       totalBase: balance.totalBase,
+      freeBase: balance.freeBase,
       activeBase: balance.totalBase * activePercent,
       activeUSDC: balance.freeUSDC * 0.5,
       totalUSDC: balance.totalUSDC,

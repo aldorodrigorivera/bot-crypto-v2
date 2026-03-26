@@ -9,6 +9,7 @@ export function useSSE() {
   const esRef = useRef<EventSource | null>(null)
   const updateFromSSE = useBotStore(s => s.updateFromSSE)
   const setSSEConnected = useBotStore(s => s.setSSEConnected)
+  const addRiskAlert = useBotStore(s => s.addRiskAlert)
 
   useEffect(() => {
     let reconnectTimeout: ReturnType<typeof setTimeout>
@@ -37,19 +38,16 @@ export function useSSE() {
                 resumeAt?: number
               }
               if (d.kind === 'rate_limit' && d.waitMs != null) {
-                toast.warning(d.message, {
-                  description: `${d.ordersCount}/${d.ordersLimit} órdenes en 10s — esperando ${d.waitMs}ms`,
-                  position: 'bottom-right',
-                  duration: d.waitMs + 1000,
-                })
+                const detail = `${d.ordersCount}/${d.ordersLimit} órdenes en 10s — esperando ${d.waitMs}ms`
+                toast.warning(d.message, { description: detail, position: 'bottom-right', duration: d.waitMs + 1000 })
+                addRiskAlert(d.message, detail)
               } else if (d.openCount != null) {
-                toast.warning(d.message, {
-                  description: `${d.openCount}/${d.maxOrders} órdenes abiertas — reanuda en ≤${d.resumeAt}`,
-                  position: 'bottom-right',
-                  duration: 6000,
-                })
+                const detail = `${d.openCount}/${d.maxOrders} órdenes abiertas — reanuda en ≤${d.resumeAt}`
+                toast.warning(d.message, { description: detail, position: 'bottom-right', duration: 6000 })
+                addRiskAlert(d.message, detail)
               } else {
                 toast.warning(d.message, { position: 'bottom-right', duration: 5000 })
+                addRiskAlert(d.message, (d as { detail?: string }).detail)
               }
             }
           }
@@ -70,5 +68,5 @@ export function useSSE() {
       esRef.current?.close()
       setSSEConnected(false)
     }
-  }, [updateFromSSE, setSSEConnected])
+  }, [updateFromSSE, setSSEConnected, addRiskAlert])
 }

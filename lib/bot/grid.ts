@@ -1,4 +1,5 @@
 import { MIN_LEVEL_SEPARATION, BINANCE_FEE_PERCENT } from '../config'
+import { SIZING_BASE_AMOUNT } from '../../bot.config'
 import type { GridLevel, GridConfig, OrderSide } from '../types'
 
 export function buildGridLevels(
@@ -35,7 +36,9 @@ export function calculateAmountPerLevel(
   currentPrice: number
 ): number {
   const estimatedBuyLevels = config.gridLevels / 2
-  return (activeUSDC / currentPrice) / estimatedBuyLevels
+  const calculated = (activeUSDC / currentPrice) / estimatedBuyLevels
+  // Usar SIZING_BASE_AMOUNT como piso: evita órdenes de 0 o sub-mínimo de Binance
+  return Math.max(calculated, SIZING_BASE_AMOUNT)
 }
 
 export function getOppositeOrderPrice(

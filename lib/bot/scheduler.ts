@@ -2,17 +2,17 @@ import { runBotCycle } from './engine'
 import { runLayer3Agent } from '../analysis/layer3-agent'
 import { runMarketAnalysis } from '../analysis/market'
 import { buildGridLevels, calculateAmountPerLevel, getGridMinMax } from './grid'
-import { readAccountBalance, fetchCurrentPrice, cancelAllOrders, cancelOrder, placeLimitOrder } from '../exchange/orders'
+import { readAccountBalance, fetchCurrentPrice, cancelAllOrders, placeLimitOrder } from '../exchange/orders'
 import { saveBotState, getBotState, markBotAsStopped } from '../database/botState'
-import { getActiveGridOrders, clearAllGridOrders, saveGridOrder, updateGridOrderStatus } from '../database/gridOrders'
+import { getActiveGridOrders, saveGridOrder, updateGridOrderStatus } from '../database/gridOrders'
 import { broadcastSSE } from '../sse'
 import { logger } from '../logger'
-import { getAppConfig, GRID_CONFIGS, MAIN_LOOP_INTERVAL_MS, LAYER3_MIN_INTERVAL_MS, PRICE_BROADCAST_INTERVAL_MS } from '../config'
+import { getAppConfig, MAIN_LOOP_INTERVAL_MS, LAYER3_MIN_INTERVAL_MS, PRICE_BROADCAST_INTERVAL_MS } from '../config'
 import { runtime } from '../runtime'
 import { buildAndSaveSession } from './session'
 import { runBacktest } from '../backtesting/engine'
 import { loadIncubationState } from '../incubation/manager'
-import type { GridLevel, GridOrder, BotStopReason } from '../types'
+import type { GridLevel, GridOrder } from '../types'
 
 let gridLevels: GridLevel[] = []
 let priceBroadcastInterval: ReturnType<typeof setInterval> | null = null
@@ -91,6 +91,24 @@ export async function startBot(options: {
   const amountPerLevel = calculateAmountPerLevel(activeUSDC, gridConfig, currentPrice)
   gridLevels = buildGridLevels(currentPrice, gridConfig, amountPerLevel)
 
+  // Ajustar montos de sell para caber dentro del balance disponible de base currency
+  // (el amountPerLevel se calcula desde USDT pero los sells necesitan XRP físico)
+  const sellLevelsInGrid = gridLevels.filter(l => l.side === 'sell')
+  if (sellLevelsInGrid.length > 0 && balance.freeBase > 0) {
+    const xrpForSells = balance.freeBase * activePercent
+    const maxSellAmountPerLevel = xrpForSells / sellLevelsInGrid.length
+    if (maxSellAmountPerLevel < amountPerLevel) {
+      const adjustedSellAmount = Math.max(maxSellAmountPerLevel, config.bot.sizingBaseAmount)
+      gridLevels = gridLevels.map(l =>
+        l.side === 'sell' ? { ...l, amount: adjustedSellAmount } : l
+      )
+      logger.info(
+        `[scheduler] Sell amount ajustado: ${amountPerLevel.toFixed(4)} → ${adjustedSellAmount.toFixed(4)} XRP ` +
+        `(${balance.freeBase.toFixed(2)} XRP libre × ${config.bot.activePercent}% / ${sellLevelsInGrid.length} niveles)`
+      )
+    }
+  }
+
   const { min: gridMin, max: gridMax } = getGridMinMax(currentPrice, gridConfig)
 
   // Crear/actualizar estado en DB
@@ -121,6 +139,11 @@ export async function startBot(options: {
   runtime.isRunning = true
   runtime.isPaused = false
   runtime.activeOrders = new Map()
+  if (!options.resume) {
+    runtime.peakProfitUSDC = 0
+    runtime.consecutiveLosses = 0
+    runtime.pauseUntil = null
+  }
 
   // Cargar órdenes activas de DB si es resume; si no, colocar órdenes iniciales del grid
   if (options.resume) {
@@ -130,9 +153,31 @@ export async function startBot(options: {
     }
     logger.info(`Resume: ${activeOrders.length} órdenes cargadas de DB`)
   } else {
-    logger.info(`Colocando ${gridLevels.length} órdenes iniciales del grid...`)
+    const BINANCE_MIN_NOTIONAL = 1.0
+    const [baseCurrency] = pair.split('/')
+    const hasSellCapacity = balance.freeBase >= config.bot.sizingBaseAmount
+    logger.info(
+      `Colocando ${gridLevels.length} órdenes iniciales del grid... ` +
+      `(balance: ${balance.freeUSDC.toFixed(2)} USDT libre, ${balance.freeBase.toFixed(4)} ${baseCurrency} libre` +
+      `${!hasSellCapacity ? ` — sin ${baseCurrency}: órdenes sell omitidas hasta primer fill` : ''})`
+    )
+    if (!hasSellCapacity) {
+      broadcastSSE('risk_alert', {
+        message: `Sin ${baseCurrency} en cuenta: órdenes sell iniciales omitidas. El bot solo comprará hasta ejecutar el primer fill.`,
+      })
+    }
     let placed = 0
+    const placeErrors: string[] = []
     for (const level of gridLevels) {
+      // Sin XRP/base: omitir sells iniciales — se colocarán automáticamente al llenar una compra
+      if (level.side === 'sell' && !hasSellCapacity) {
+        continue
+      }
+      const notional = level.amount * level.price
+      if (notional < BINANCE_MIN_NOTIONAL) {
+        logger.warn(`Nivel ${level.level} omitido: notional $${notional.toFixed(4)} < mínimo $${BINANCE_MIN_NOTIONAL} (amount=${level.amount} price=${level.price.toFixed(4)})`)
+        continue
+      }
       try {
         const exchangeOrder = await placeLimitOrder(pair, level.side, level.amount, level.price)
         const gridOrder: GridOrder = {
@@ -147,10 +192,20 @@ export async function startBot(options: {
         await saveGridOrder(gridOrder).catch(() => {})
         placed++
       } catch (err) {
-        logger.warn(`Error colocando orden inicial nivel ${level.level}:`, err)
+        const errMsg = err instanceof Error ? err.message : String(err)
+        logger.warn(`Error colocando orden inicial nivel ${level.level} (${level.side} ${level.amount} @ ${level.price.toFixed(4)}): ${errMsg}`)
+        if (!placeErrors.includes(errMsg)) placeErrors.push(errMsg)
       }
     }
     logger.info(`Órdenes iniciales colocadas: ${placed}/${gridLevels.length}`)
+    if (placed === 0 && placeErrors.length > 0) {
+      const errorSummary = placeErrors[0]
+      logger.error(`[scheduler] Ninguna orden inicial fue aceptada por Binance. Primer error: ${errorSummary}`)
+      broadcastSSE('risk_alert', {
+        message: `Error: 0/${gridLevels.length} órdenes aceptadas por Binance`,
+        detail: errorSummary,
+      })
+    }
     broadcastSSE('grid_rebuild', { pair, newConfig: gridConfig.name, ordersPlaced: placed })
   }
 
@@ -199,19 +254,18 @@ export async function stopBot(): Promise<void> {
   runtime.isRunning = false
   runtime.isPaused = false
 
-  // Cancelar todas las órdenes abiertas
+  // Cancelar todas las órdenes en Binance (cancelAllOrders no depende de activeOrders en memoria)
+  await cancelAllOrders(config.bot.pair).catch(err =>
+    logger.warn('Error cancelando órdenes en Binance:', err)
+  )
+
+  // Marcar como canceladas en DB y limpiar memoria
   const openOrders = Array.from(runtime.activeOrders.values()).filter(o => o.status === 'open')
-  if (openOrders.length > 0) {
-    logger.info(`Cancelando ${openOrders.length} órdenes abiertas...`)
-    for (const order of openOrders) {
-      await cancelOrder(order.orderId, config.bot.pair).catch(err =>
-        logger.warn(`Error cancelando orden ${order.orderId}:`, err)
-      )
-      await updateGridOrderStatus(order.orderId, 'cancelled').catch(() => {})
-    }
-    runtime.activeOrders.clear()
-    logger.info('Órdenes canceladas correctamente')
+  for (const order of openOrders) {
+    await updateGridOrderStatus(order.orderId, 'cancelled').catch(() => {})
   }
+  runtime.activeOrders.clear()
+  logger.info(`Órdenes canceladas (${openOrders.length} en memoria + todas las de Binance)`)
 
   await markBotAsStopped('manual', config.bot.pair)
 

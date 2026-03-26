@@ -50,9 +50,9 @@ export function StatusCard() {
           {/* Precio */}
           <div className="flex items-center gap-3">
             <div>
-              <p className="text-sm text-muted-foreground">{pair}</p>
+              <p className="text-sm text-muted-foreground" suppressHydrationWarning>{pair}</p>
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-bold tabular-nums">
+                <span className="text-3xl font-bold tabular-nums" suppressHydrationWarning>
                   ${currentPrice.toFixed(4)}
                 </span>
                 <PriceIcon

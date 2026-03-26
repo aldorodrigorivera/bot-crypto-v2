@@ -25,6 +25,7 @@ interface BotStore {
   // Capital
   activePercent: number
   totalBase: number
+  freeBase: number
   activeUSDC: number
   totalUSDC: number
   totalProfitUSDC: number
@@ -81,12 +82,18 @@ interface BotStore {
     sizeMultiplier: number
   }
 
+  // Alertas de riesgo acumuladas
+  riskAlerts: { id: number; message: string; detail?: string; timestamp: number }[]
+
   // Acciones
   updateFromSSE: (event: SSEEvent) => void
   updateFromStatus: (data: StatusResponse) => void
   updateFromSummary: (data: { todayTrades: number; todayProfitUSDC: number }) => void
   setSSEConnected: (connected: boolean) => void
   setBotUSDC: (value: number) => void
+  addRiskAlert: (message: string, detail?: string) => void
+  clearRiskAlerts: () => void
+  dismissRiskAlert: (id: number) => void
 }
 
 export const useBotStore = create<BotStore>((set, get) => ({
@@ -102,6 +109,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
   activePercent: 20,
   totalBase: 0,
+  freeBase: 0,
   activeUSDC: 0,
   totalUSDC: 0,
   totalProfitUSDC: 0,
@@ -123,10 +131,12 @@ export const useBotStore = create<BotStore>((set, get) => ({
   layer3LastAction: 'keep',
   capitalEfficiency: 0,
 
-  pair: 'XRP/USDC',
+  pair: 'XRP/USDT',
   mode: 'TESTNET',
 
   lastSession: null,
+
+  riskAlerts: [],
 
   backtest: {
     passed: false,
@@ -155,11 +165,20 @@ export const useBotStore = create<BotStore>((set, get) => ({
   setSSEConnected: (connected) => set({ sseConnected: connected }),
   setBotUSDC: (value) => set({ botUSDC: value }),
 
+  addRiskAlert: (message, detail) => set(s => ({
+    riskAlerts: [
+      { id: Date.now(), message, detail, timestamp: Date.now() },
+      ...s.riskAlerts,
+    ].slice(0, 50),
+  })),
+  clearRiskAlerts: () => set({ riskAlerts: [] }),
+  dismissRiskAlert: (id) => set(s => ({ riskAlerts: s.riskAlerts.filter(a => a.id !== id) })),
+
   updateFromStatus: (data) => {
     const bs = data.botState
     const lb = data.liveBalance
 
-    set({
+    set(s => ({
       pair: data.pair,
       mode: data.mode,
       isPaused: data.isPaused,
@@ -169,11 +188,14 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
       activePercent: data.activePercent ?? 20,
       totalBase: lb?.totalBase ?? bs?.totalBase ?? 0,
+      freeBase: lb?.freeBase ?? 0,
       activeUSDC: lb?.activeUSDC ?? bs?.activeUSDC ?? 0,
       totalUSDC: lb?.totalUSDC ?? 0,
       totalProfitUSDC: bs?.totalProfitUSDC ?? 0,
       totalTrades: bs?.totalTrades ?? 0,
       ordersSkippedToday: bs?.ordersSkippedToday ?? 0,
+
+      botUSDC: lb?.activeUSDC ?? s.botUSDC,
 
       gridMin: bs?.gridMin ?? 0,
       gridMax: bs?.gridMax ?? 0,
@@ -185,7 +207,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
 
       dailyTradesLimit: data.rateLimits?.dailyTradesLimit ?? 1000,
       ordersLast10s: data.rateLimits?.ordersLast10s ?? 0,
-    })
+    }))
   },
 
   updateFromSummary: (data) => {

@@ -11,23 +11,26 @@ import { StartModal } from './StartModal'
 import { SessionsModal } from './SessionsModal'
 import { useStatus } from '@/hooks/useDashboard'
 import { toast } from 'sonner'
-import { Play, Square, RefreshCw, BarChart2, Brain, RotateCcw, Loader2, Wallet, CalendarDays } from 'lucide-react'
+import { Play, Square, RefreshCw, BarChart2, Brain, RotateCcw, Loader2, CalendarDays, FileText, AlertCircle, X, Trash2, Bell } from 'lucide-react'
 import type { StartupPreview } from '@/lib/types'
 
 export function ControlPanel() {
-  const { botStatus, isPaused, setBotUSDC, lastSession } = useBotStore(useShallow(s => ({
+  const { botStatus, isPaused, lastSession, riskAlerts, clearRiskAlerts, dismissRiskAlert } = useBotStore(useShallow(s => ({
     botStatus: s.botStatus,
     isPaused: s.isPaused,
-    setBotUSDC: s.setBotUSDC,
     lastSession: s.lastSession,
+    riskAlerts: s.riskAlerts,
+    clearRiskAlerts: s.clearRiskAlerts,
+    dismissRiskAlert: s.dismissRiskAlert,
   })))
   const { refetch: refetchStatus } = useStatus()
 
   const [startOpen, setStartOpen] = useState(false)
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [previewData, setPreviewData] = useState<StartupPreview | null>(null)
-  const [confirmDialog, setConfirmDialog] = useState<null | 'stop' | 'rebalance'>(null)
+  const [confirmDialog, setConfirmDialog] = useState<null | 'stop' | 'rebalance' | 'cancel-all'>(null)
   const [loading, setLoading] = useState<string | null>(null)
+  const [sessionReportError, setSessionReportError] = useState<string | null>(null)
 
   // Toast cuando el bot se detiene y hay resumen de sesión
   useEffect(() => {
@@ -39,7 +42,7 @@ export function ControlPanel() {
     const isProfit = totalProfitUSDC >= 0
 
     toast[isProfit ? 'success' : 'warning']('Sesión finalizada — todos los trades cerrados', {
-      description: `Duración: ${duration} · Trades: ${totalTrades} · ✅ ${profitTrades} con ganancia · ❌ ${lossTrades} con pérdida · Profit: ${isProfit ? '+' : ''}${totalProfitUSDC.toFixed(4)} USDC`,
+      description: `Duración: ${duration} · Trades: ${totalTrades} · ✅ ${profitTrades} con ganancia · ❌ ${lossTrades} con pérdida · Profit: ${isProfit ? '+' : ''}${totalProfitUSDC.toFixed(4)} USDT`,
       position: 'bottom-right',
       duration: 12000,
     })
@@ -66,15 +69,27 @@ export function ControlPanel() {
     }
   }
 
-  async function handleStart(opts: { gridLevels: number; gridRangePercent: number }) {
+  async function handleStart(
+    opts: { gridLevels: number; gridRangePercent: number },
+    forceStart = false
+  ): Promise<{ ok: boolean; backtestFailed?: boolean; reasons?: string[] }> {
     setLoading('start')
     try {
-      await callApi('/api/bot/start', 'POST', {
+      const res = await callApi('/api/bot/start', 'POST', {
         ...opts,
         analysis: previewData?.analysis ?? null,
         claudeRecommendation: previewData?.claudeRecommendation ?? null,
+        forceStart,
       })
+      if (!res.success) {
+        if (res.data?.backtestFailed) {
+          return { ok: false, backtestFailed: true, reasons: res.data.failedReasons }
+        }
+        toast.error('Error iniciando el bot', { description: res.error, position: 'bottom-right' })
+        return { ok: false }
+      }
       await refetchStatus()
+      return { ok: true }
     } finally {
       setLoading(null)
     }
@@ -121,24 +136,39 @@ export function ControlPanel() {
     }
   }
 
-  async function handleRefreshUSDC() {
-    setLoading('usdc')
+  async function handleGenerateReport() {
+    setSessionReportError(null)
+    setLoading('report')
     try {
-      const res = await fetch('/api/status')
-      const data = await res.json()
-      if (data.success) {
-        const d = data.data as import('@/lib/types').StatusResponse
-        const totalUSDC = d.liveBalance?.totalUSDC ?? 0
-        const profitUSDC = d.botState?.totalProfitUSDC ?? 0
-        const totalLive = totalUSDC + profitUSDC
-        const botUSDC = d.liveBalance?.activeUSDC ?? 0
-        const pct = totalLive > 0 ? Math.round((botUSDC / totalLive) * 100) : 0
-        setBotUSDC(botUSDC)
-        toast.success('USDC para Bot actualizado', {
-          description: `Total: $${totalLive.toFixed(2)} → Bot (${pct}%): $${botUSDC.toFixed(2)}`,
+      const res = await callApi('/api/bot/session-report')
+      if (res.success) {
+        toast.success('Reporte de sesión generado', {
+          description: 'El reporte fue guardado en docs/sessions/',
+          position: 'bottom-right',
+        })
+      } else {
+        setSessionReportError(res.error ?? 'Error generando el reporte de sesión')
+      }
+    } catch {
+      setSessionReportError('Error de conexión al generar el reporte')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleCancelAll() {
+    setConfirmDialog(null)
+    setLoading('cancel-all')
+    try {
+      const res = await callApi('/api/bot/cancel-all')
+      if (res.success) {
+        toast.success(`Órdenes canceladas en Binance`, {
+          description: res.data?.message,
           position: 'bottom-right',
         })
         await refetchStatus()
+      } else {
+        toast.error('Error cancelando órdenes', { description: res.error, position: 'bottom-right' })
       }
     } finally {
       setLoading(null)
@@ -160,6 +190,15 @@ export function ControlPanel() {
 
   return (
     <>
+      {sessionReportError && (
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span className="flex-1">{sessionReportError}</span>
+          <button onClick={() => setSessionReportError(null)} className="shrink-0 hover:text-red-300">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {/* Iniciar */}
         {(isStopped || botStatus === 'loading') && (
@@ -234,16 +273,31 @@ export function ControlPanel() {
           Consultar Agente
         </Button>
 
-        {/* Actualizar USDC */}
-        <Button
-          variant="outline"
-          onClick={handleRefreshUSDC}
-          disabled={loading !== null}
-          className="gap-2"
-        >
-          {loading === 'usdc' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
-          Actualizar USDC para Bot
-        </Button>
+        {/* Generar reporte */}
+        {isStopped && (
+          <Button
+            variant="outline"
+            onClick={handleGenerateReport}
+            disabled={loading !== null}
+            className="gap-2"
+          >
+            {loading === 'report' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Generar reporte de sesión
+          </Button>
+        )}
+
+        {/* Cancelar todas las órdenes en Binance */}
+        {isStopped && (
+          <Button
+            variant="outline"
+            onClick={() => setConfirmDialog('cancel-all')}
+            disabled={loading !== null}
+            className="gap-2 text-orange-500 border-orange-500/30 hover:bg-orange-500/10"
+          >
+            {loading === 'cancel-all' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Cancelar órdenes Binance
+          </Button>
+        )}
 
         {/* Ver Sesiones */}
         <Button
@@ -268,6 +322,7 @@ export function ControlPanel() {
         analysis={previewData?.analysis ?? null}
         claudeRecommendation={previewData?.claudeRecommendation ?? null}
         loading={loading === 'preview'}
+        loadingForce={loading === 'start'}
       />
 
       {/* Confirm stop */}
@@ -285,6 +340,65 @@ export function ControlPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm cancel-all */}
+      <Dialog open={confirmDialog === 'cancel-all'} onOpenChange={() => setConfirmDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar todas las órdenes</DialogTitle>
+            <DialogDescription>
+              Se cancelarán TODAS las órdenes abiertas en Binance para XRP/USDT, incluyendo las de sesiones anteriores. Esto libera el USDT bloqueado.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleCancelAll}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Panel de alertas de riesgo */}
+      {riskAlerts.length > 0 && (
+        <div className="mt-4 rounded-md border border-yellow-500/30 bg-yellow-500/5 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-yellow-500/20">
+            <div className="flex items-center gap-1.5">
+              <Bell className="h-3.5 w-3.5 text-yellow-500" />
+              <span className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                Alertas del sistema ({riskAlerts.length})
+              </span>
+            </div>
+            <button
+              onClick={clearRiskAlerts}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Limpiar todo
+            </button>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y divide-yellow-500/10">
+            {riskAlerts.map(alert => (
+              <div key={alert.id} className="flex items-start gap-2 px-3 py-2 hover:bg-yellow-500/5 group">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 leading-relaxed wrap-break-word">
+                    {alert.message}
+                  </p>
+                  {alert.detail && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{alert.detail}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {new Date(alert.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => dismissRiskAlert(alert.id)}
+                  className="shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Confirm rebalance */}
       <Dialog open={confirmDialog === 'rebalance'} onOpenChange={() => setConfirmDialog(null)}>

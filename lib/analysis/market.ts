@@ -81,7 +81,8 @@ export async function runMarketAnalysis(pair: string): Promise<MarketAnalysis> {
   const { config: recommendedConfig, reason: configReason } = selectOptimalConfig(
     volatility24h,
     trend,
-    totalCapitalUSD
+    totalCapitalUSD,
+    averageDailyRange
   )
 
   const analysis: MarketAnalysis = {

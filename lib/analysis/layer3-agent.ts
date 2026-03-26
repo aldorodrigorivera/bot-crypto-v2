@@ -76,15 +76,26 @@ export async function runLayer3Agent(
     const sessionDurationMinutes = botState?.startedAt
       ? Math.round((Date.now() - new Date(botState.startedAt).getTime()) / 60_000)
       : 0
+    // Grid coverage: how much of today's volatility does the current grid cover?
+    const gridRange = botState?.gridMin && botState?.gridMax
+      ? ((botState.gridMax - botState.gridMin) / botState.gridMin) * 100
+      : null
+    const coveragePct = gridRange !== null && analysis.volatility24h > 0
+      ? (gridRange / analysis.volatility24h * 100).toFixed(0)
+      : 'N/A'
+
     const context = `
 Par: ${analysis.pair}
 Precio actual: ${analysis.currentPrice.toFixed(4)}
 Cambio 24h: ${analysis.priceChange24h.toFixed(2)}%
-Volatilidad 24h: ${analysis.volatility24h.toFixed(2)}%
+Volatilidad 24h (rango high-low): ${analysis.volatility24h.toFixed(2)}%
+Rango diario promedio 7 días: ${analysis.averageDailyRange.toFixed(2)}%
 Tendencia: ${analysis.trend} (${analysis.trendStrength})
 Volumen 24h: ${analysis.volume24h.toLocaleString()}
+Volumen vs día anterior: ${analysis.volumeChange.toFixed(1)}%
 Precio vs MA20: ${analysis.priceVsMA20.toFixed(2)}%
 Precio vs MA50: ${analysis.priceVsMA50.toFixed(2)}%
+Máximo 24h: ${analysis.price24hHigh.toFixed(4)} | Mínimo 24h: ${analysis.price24hLow.toFixed(4)}
 
 Estado del bot:
 - Corriendo: ${runtime.isRunning}
@@ -103,7 +114,12 @@ Capital:
 
 Grid actual:
 - Min: ${botState?.gridMin?.toFixed(4) ?? 'N/A'} | Max: ${botState?.gridMax?.toFixed(4) ?? 'N/A'}
+- Rango del grid: ${gridRange !== null ? gridRange.toFixed(2) + '%' : 'N/A'}
+- Cobertura de volatilidad: ${coveragePct}% del rango de 24h cubierto por el grid
 - Niveles: ${botState?.gridLevels ?? 'N/A'} | Config: ${botState?.configName ?? 'N/A'}
+
+NOTA: Si el grid cubre menos del 50% del rango de 24h, el precio probablemente ya escapó del grid.
+En ese caso considera reconstruir con rango = max(rango_diario_promedio × 1.3, 12)%.
 
 Trigger de esta evaluación: ${trigger}
 `

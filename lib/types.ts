@@ -537,6 +537,7 @@ export interface StatusResponse {
   activePercent: number
   liveBalance: {
     totalBase: number
+    freeBase: number
     activeBase: number
     activeUSDC: number
     totalUSDC: number

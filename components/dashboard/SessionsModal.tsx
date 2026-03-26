@@ -98,7 +98,7 @@ export function SessionsModal({ open, onClose }: Props) {
               <div className="rounded-lg border bg-card p-3 text-center">
                 <p className="text-xs text-muted-foreground">Ganancia 7 días</p>
                 <p className={`text-xl font-bold ${totalProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {totalProfit >= 0 ? '+' : ''}{totalProfit.toFixed(4)} USDC
+                  {totalProfit >= 0 ? '+' : ''}{totalProfit.toFixed(4)} USDT
                 </p>
               </div>
             </div>
@@ -111,7 +111,7 @@ export function SessionsModal({ open, onClose }: Props) {
                   <TableHead className="text-center">Trades</TableHead>
                   <TableHead className="text-center">✅ Ganancia</TableHead>
                   <TableHead className="text-center">❌ Pérdida</TableHead>
-                  <TableHead className="text-right">Profit USDC</TableHead>
+                  <TableHead className="text-right">Profit USDT</TableHead>
                   <TableHead>Motivo parada</TableHead>
                 </TableRow>
               </TableHeader>
