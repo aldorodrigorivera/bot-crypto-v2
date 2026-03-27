@@ -169,16 +169,38 @@ export function LiquidityPanel() {
 
             {/* Override activo */}
             {liquidityOverrideActive && liquidityOverrideReason && (
-              <div className="flex items-start gap-2 rounded-md border border-orange-500/20 bg-orange-500/5 px-3 py-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-orange-300">{liquidityOverrideReason}</p>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-start gap-2 rounded-md border border-orange-500/20 bg-orange-500/5 px-3 py-2 cursor-default">
+                    <AlertTriangle className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-orange-300">{liquidityOverrideReason}</p>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="font-semibold">Override por Funding Rate extremo</p>
+                  <p className="text-muted-foreground">Cuando la tasa de financiamiento de futuros perpetuos supera ±0.05%, el sesgo se reduce un 70% para proteger contra liquidaciones masivas.</p>
+                  <p className="text-muted-foreground mt-1">Funding muy positivo + sesgo alcista → riesgo de long squeeze (longs forzados a cerrar).</p>
+                  <p className="text-muted-foreground">Funding muy negativo + sesgo bajista → riesgo de short squeeze.</p>
+                </TooltipContent>
+              </Tooltip>
             )}
 
             {/* Distribución de niveles */}
             {liquidityLevelsAbove > 0 && liquidityLevelsBelow > 0 && (
               <div className="rounded-md border border-border/40 px-3 py-2 space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Grid asimétrico</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground font-medium">Grid asimétrico</p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground/50 cursor-help hover:text-muted-foreground transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="font-semibold">Distribución de niveles del grid</p>
+                      <p className="text-muted-foreground">Las barras muestran qué porcentaje de niveles se asigna a órdenes de venta (↑, por encima del precio) vs. compra (↓, por debajo del precio).</p>
+                      <p className="text-muted-foreground mt-1">El sesgo alcista pone más niveles de compra abajo para acumular XRP. El bajista pone más ventas arriba para vender más XRP al subir.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-red-400 w-20 shrink-0">↑ {liquidityLevelsAbove} ventas</span>

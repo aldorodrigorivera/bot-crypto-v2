@@ -4,7 +4,7 @@ import { useBotStore } from '@/store/bot'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { FlaskConical, CheckCircle, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { IncubationPhase } from '@/lib/types'
@@ -33,19 +33,17 @@ export function IncubationPanel() {
   const incubation = useBotStore(s => s.incubation)
 
   const titleNode = (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="flex items-center gap-1 cursor-default">
-            Modo Incubación
-            <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-line">
-          {INCUBATION_TOOLTIP}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex items-center gap-1 cursor-default">
+          Modo Incubación
+          <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-line">
+        {INCUBATION_TOOLTIP}
+      </TooltipContent>
+    </Tooltip>
   )
 
   if (!incubation.isActive) {

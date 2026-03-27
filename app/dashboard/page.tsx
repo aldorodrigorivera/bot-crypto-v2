@@ -27,8 +27,10 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-6 space-y-4">
-      {/* Status */}
-      <StatusCard />
+      {/* Status — sticky para seguirlo al hacer scroll */}
+      <div className="sticky top-0 z-50 -mx-4 md:-mx-6 px-4 md:px-6 pb-2 pt-0 bg-background/80 backdrop-blur-md border-b border-border/30">
+        <StatusCard />
+      </div>
 
       {/* Controles */}
       <ControlPanel />

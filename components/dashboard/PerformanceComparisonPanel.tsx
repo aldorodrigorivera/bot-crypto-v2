@@ -2,7 +2,7 @@
 
 import { usePerformanceComparison } from '@/hooks/useDashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TrendingUp, AlertTriangle, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -47,19 +47,17 @@ export function PerformanceComparisonPanel() {
   } | null
 
   const titleNode = (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="flex items-center gap-1 cursor-default">
-            Real vs Simulado
-            <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-line">
-          {COMPARISON_TOOLTIP}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex items-center gap-1 cursor-default">
+          Real vs Simulado
+          <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-line">
+        {COMPARISON_TOOLTIP}
+      </TooltipContent>
+    </Tooltip>
   )
 
   if (isLoading || !data) {

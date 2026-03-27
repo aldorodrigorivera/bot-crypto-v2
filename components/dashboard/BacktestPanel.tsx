@@ -5,7 +5,7 @@ import { useBotStore } from '@/store/bot'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { BarChart2, RefreshCw, CheckCircle, XCircle, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,19 +21,17 @@ Si el backtest no aprueba (Score bajo), el bot te advierte antes de arrancar.`
 
 function TitleWithTooltip({ children }: { children: React.ReactNode }) {
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="flex items-center gap-1 cursor-default">
-            {children}
-            <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-line">
-          {BACKTEST_TOOLTIP}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="flex items-center gap-1 cursor-default">
+          {children}
+          <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-xs text-xs whitespace-pre-line">
+        {BACKTEST_TOOLTIP}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

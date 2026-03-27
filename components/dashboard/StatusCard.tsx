@@ -104,16 +104,21 @@ export function StatusCard() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Badge
-                  variant={mode === 'TESTNET' ? 'secondary' : 'destructive'}
-                  className="text-xs cursor-default"
+                  variant={mode === 'PRODUCCIÓN' ? 'destructive' : 'secondary'}
+                  className={cn(
+                    'text-xs cursor-default',
+                    mode === 'DEMO' && 'border-blue-500/50 text-blue-400 bg-blue-500/10'
+                  )}
                 >
                   {mode}
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {mode === 'TESTNET'
-                  ? <><p className="font-semibold">Modo TESTNET</p><p className="text-muted-foreground">Opera en el entorno de pruebas de Binance. No se usa dinero real. Las órdenes y balances son simulados.</p></>
-                  : <><p className="font-semibold">Modo LIVE</p><p className="text-orange-400">Opera con dinero real en Binance. Cada orden usa fondos reales de tu cuenta.</p></>
+                {mode === 'DEMO'
+                  ? <><p className="font-semibold">Modo DEMO (demo.binance.com)</p><p className="text-muted-foreground">Entorno oficial de Binance con precios similares al mercado real. Sin dinero real. Puedes resetear el balance desde la UI de Binance.</p></>
+                  : mode === 'TESTNET'
+                  ? <><p className="font-semibold">Modo TESTNET</p><p className="text-muted-foreground">Entorno de pruebas de Binance con precios independientes al mercado real. Balance se resetea mensualmente.</p></>
+                  : <><p className="font-semibold">Modo PRODUCCIÓN</p><p className="text-orange-400">Opera con dinero real en Binance. Cada orden usa fondos reales de tu cuenta.</p></>
                 }
               </TooltipContent>
             </Tooltip>

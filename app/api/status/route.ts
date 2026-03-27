@@ -38,7 +38,7 @@ export async function GET() {
       currentPrice,
       openOrdersCount: Array.from(botRuntime.activeOrders.values()).filter(o => o.status === 'open').length,
       pair,
-      mode: config.binance.testnet ? 'TESTNET' : 'PRODUCCIÓN',
+      mode: config.binance.demo ? 'DEMO' : config.binance.testnet ? 'TESTNET' : 'PRODUCCIÓN',
       activePercent: config.bot.activePercent,
       liveBalance,
       rateLimits: {

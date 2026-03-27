@@ -1,9 +1,11 @@
 export const PROFIT_TARGET_USDC = 0
 
 // Modo de operación:
-//   true  → Testnet (dinero de prueba, sin riesgo real)
-//   false → Producción — con MOCK_BALANCE=true no hay riesgo real aunque apunte a producción
-export const BINANCE_TESTNET = true
+//   BINANCE_DEMO    → demo.binance.com (precios similares al real, sin dinero real) ← RECOMENDADO
+//   BINANCE_TESTNET → testnet.binance.vision (precios independientes, reset mensual)
+//   Ambos false     → Producción (dinero real)
+export const BINANCE_DEMO = false
+export const BINANCE_TESTNET = false
 
 // Balance simulado (true = órdenes simuladas localmente, datos de mercado son reales)
 // RECOMENDADO para pruebas realistas: usa precios/OHLCV/orderbook de producción real
@@ -16,12 +18,12 @@ export const MOCK_BALANCE = false
 export const PAIR = 'XRP/USDT'
 
 // Porcentaje del XRP total que el bot puede usar para operar (el resto es reserva intocable)
-export const ACTIVE_PERCENT = 20
+export const ACTIVE_PERCENT = 50
 
 
 // ─── CONFIGURACIÓN DEL GRID (Valores por defecto) ──────────────────────
 // El módulo de análisis puede sobreescribir estos valores en memoria
-export const GRID_LEVELS = 10
+export const GRID_LEVELS = 5
 export const GRID_RANGE_PERCENT = 8
 
 

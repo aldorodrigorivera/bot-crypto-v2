@@ -296,6 +296,7 @@ export interface AppConfig {
     apiKey: string
     secret: string
     testnet: boolean
+    demo: boolean
   }
   back4app: {
     appId: string
@@ -539,7 +540,7 @@ export interface StatusResponse {
   currentPrice: number
   openOrdersCount: number
   pair: string
-  mode: 'TESTNET' | 'PRODUCCIÓN'
+  mode: 'TESTNET' | 'DEMO' | 'PRODUCCIÓN'
   activePercent: number
   liveBalance: {
     totalBase: number

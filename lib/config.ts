@@ -6,7 +6,7 @@ import {
   LAYER3_TRIGGER_VOLATILITY, LAYER3_TRIGGER_IDLE_MINUTES, LAYER3_REVIEW_HOURS,
   SIZING_BASE_AMOUNT, SIZING_MAX_MULTIPLIER, SIZING_MIN_MULTIPLIER, SIZING_CENTRAL_LEVELS_PERCENT,
   SPLIT_ENABLED, SPLIT_PARTS, SPLIT_DISTRIBUTION, SPLIT_SPREAD_PERCENT,
-  PROFIT_TARGET_USDC, LOG_LEVEL, MOCK_BALANCE, BINANCE_TESTNET,
+  PROFIT_TARGET_USDC, LOG_LEVEL, MOCK_BALANCE, BINANCE_TESTNET, BINANCE_DEMO,
   BACKTEST_ENABLED, BACKTEST_DAYS, BACKTEST_MIN_TRADES, BACKTEST_MIN_WIN_RATE,
   BACKTEST_MIN_PROFIT_FACTOR, BACKTEST_MAX_DRAWDOWN, BACKTEST_MIN_SHARPE,
   INCUBATION_ENABLED, INCUBATION_MIN_SIZE, INCUBATION_DURATION_DAYS,
@@ -17,6 +17,9 @@ import {
 // ─── Constantes globales ───────────────────────────────────────────────────
 export const BINANCE_FEE_PERCENT = 0.1
 export const MIN_LEVEL_SEPARATION = 0.25
+// Valor mínimo de orden en USDT exigido por Binance producción (filtro NOTIONAL)
+// XRP/USDT mínimo = 5 USDT — usamos 5.5 como buffer de seguridad
+export const BINANCE_MIN_NOTIONAL_USDT = 5.5
 export { MAIN_LOOP_INTERVAL_MS }
 export const REANALYSIS_CRON = '0 */4 * * *'
 export const LAYER3_MIN_INTERVAL_MS = 45 * 60 * 1000
@@ -60,6 +63,7 @@ export function getAppConfig(): AppConfig {
       apiKey: process.env.BINANCE_API_KEY ?? '',
       secret: process.env.BINANCE_SECRET ?? '',
       testnet: BINANCE_TESTNET,
+      demo: BINANCE_DEMO,
     },
     back4app: {
       appId: process.env.BACK4APP_APP_ID ?? '',

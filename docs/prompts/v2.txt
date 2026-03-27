@@ -1,0 +1,11 @@
+CONTINUA...
+Necesito que hagas un plan pero no lo implementes 
+aun para migrar a demo.binance.com en lugar de testnet te adjunto un pdf 
+
+ya tengo las credenciales y ya las cambié pero me dan errores
+2026-03-26 12:50:49 [error] POST /api/bot/cancel-all ERROR {"error":"binance {\"code\":-2015,\"msg\":\"Invalid API-key, IP, or permissions for action.\"}"}
+
+2026-03-26 12:52:04 [error] GET /api/bot/preview ERROR {"error":"binance {\"code\":-2015,\"msg\":\"Invalid API-key, IP, or permissions for action.\"}"}
+
+supongo que es porque ya puse las credenciales de https://demo.binance.com/es-MX/my/settings/api-management
+

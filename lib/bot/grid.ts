@@ -1,4 +1,4 @@
-import { MIN_LEVEL_SEPARATION, BINANCE_FEE_PERCENT } from '../config'
+import { MIN_LEVEL_SEPARATION, BINANCE_FEE_PERCENT, BINANCE_MIN_NOTIONAL_USDT } from '../config'
 import { SIZING_BASE_AMOUNT } from '../../bot.config'
 import type { GridLevel, GridConfig, GridBias, OrderSide } from '../types'
 
@@ -82,8 +82,10 @@ export function calculateAmountPerLevel(
 ): number {
   const estimatedBuyLevels = config.gridLevels / 2
   const calculated = (activeUSDC / currentPrice) / estimatedBuyLevels
-  // Usar SIZING_BASE_AMOUNT como piso: evita órdenes de 0 o sub-mínimo de Binance
-  return Math.max(calculated, SIZING_BASE_AMOUNT)
+  // Piso 1: mínimo configurado en bot.config
+  // Piso 2: mínimo notional de Binance (5 USDT) convertido a base currency
+  const minFromNotional = BINANCE_MIN_NOTIONAL_USDT / currentPrice
+  return Math.max(calculated, SIZING_BASE_AMOUNT, minFromNotional)
 }
 
 export function getOppositeOrderPrice(

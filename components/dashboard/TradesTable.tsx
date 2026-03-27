@@ -1,9 +1,11 @@
 'use client'
 
 import { useGridOrders } from '@/hooks/useDashboard'
+import { useBotStore } from '@/store/bot'
+import { useShallow } from 'zustand/react/shallow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { LayoutGrid, ArrowRight, TrendingUp } from 'lucide-react'
+import { LayoutGrid, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface EnrichedOrder {
@@ -21,21 +23,52 @@ export function TradesTable() {
   const { data: rawOrders, isLoading } = useGridOrders()
   const orders = rawOrders as EnrichedOrder[] | undefined
 
+  const { currentPrice, priceDirection, pair } = useBotStore(useShallow(s => ({
+    currentPrice: s.currentPrice,
+    priceDirection: s.priceDirection,
+    pair: s.pair,
+  })))
+
   const buys = orders?.filter(o => o.side === 'buy') ?? []
   const sells = orders?.filter(o => o.side === 'sell') ?? []
+
+  const PriceIcon = priceDirection === 'up' ? TrendingUp
+    : priceDirection === 'down' ? TrendingDown
+    : Minus
 
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <LayoutGrid className="h-4 w-4" />
-          Órdenes Abiertas
-          {orders && (
-            <span className="text-xs text-muted-foreground font-normal">
-              {sells.length} ventas · {buys.length} compras
-            </span>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4" />
+            Órdenes Abiertas
+            {orders && (
+              <span className="text-xs text-muted-foreground font-normal">
+                {sells.length} ventas · {buys.length} compras
+              </span>
+            )}
+          </CardTitle>
+          {currentPrice > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">{pair}</span>
+              <PriceIcon className={cn(
+                'h-3.5 w-3.5',
+                priceDirection === 'up' ? 'text-green-500' :
+                priceDirection === 'down' ? 'text-red-500' :
+                'text-muted-foreground'
+              )} />
+              <span className={cn(
+                'text-sm font-bold tabular-nums',
+                priceDirection === 'up' ? 'text-green-500' :
+                priceDirection === 'down' ? 'text-red-500' :
+                'text-foreground'
+              )}>
+                ${currentPrice.toFixed(4)}
+              </span>
+            </div>
           )}
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="px-3 pb-3">
         {isLoading ? (
