@@ -41,13 +41,28 @@ export async function startBot(options: {
   const currentPrice = analysis.currentPrice
 
   // Seleccionar config del grid
-  const gridConfig = options.gridLevels
+  // Fix 2 (v6): Si MANUAL_GRID_CONFIG=true, usar siempre los valores del .env
+  // sin importar lo que recomiende el análisis automático.
+  const gridConfig = config.bot.manualGridConfig
     ? {
         ...analysis.recommendedConfig,
-        gridLevels: options.gridLevels,
+        gridLevels: options.gridLevels ?? config.bot.gridLevels,
         gridRangePercent: options.gridRangePercent ?? config.bot.gridRangePercent,
       }
-    : analysis.recommendedConfig
+    : options.gridLevels
+      ? {
+          ...analysis.recommendedConfig,
+          gridLevels: options.gridLevels,
+          gridRangePercent: options.gridRangePercent ?? config.bot.gridRangePercent,
+        }
+      : analysis.recommendedConfig
+
+  if (config.bot.manualGridConfig) {
+    logger.info(
+      `Modo config manual activo — manteniendo: ${gridConfig.gridLevels} niveles, ` +
+      `±${gridConfig.gridRangePercent}% rango`
+    )
+  }
 
   runtime.currentConfig = gridConfig
 
@@ -91,6 +106,23 @@ export async function startBot(options: {
   const activeBase = totalBase * activePercent
   const reserveBase = totalBase - activeBase
   const activeUSDC = balance.freeUSDC * 0.5
+
+  // ── Fix 1 (v6): Validar que el splitter no cause MIN_NOTIONAL failures ──
+  if (config.bot.splitEnabled) {
+    const capitalPerLevel = activeUSDC / gridConfig.gridLevels
+    const smallestMicroOrder = capitalPerLevel * 0.30  // la parte más pequeña (30%)
+    const minNotional = 5  // mínimo de Binance en USDC
+    if (smallestMicroOrder < minNotional) {
+      logger.warn(
+        `⚠️  Order Splitter desactivado automáticamente. ` +
+        `Capital por nivel: $${capitalPerLevel.toFixed(2)} USDC. ` +
+        `Micro-orden mínima: $${smallestMicroOrder.toFixed(2)} USDC ` +
+        `< mínimo Binance $${minNotional} USDC. ` +
+        `Para activarlo necesitas al menos $${(minNotional / 0.30 * gridConfig.gridLevels).toFixed(0)} USDC activo.`
+      )
+      config.bot.splitEnabled = false
+    }
+  }
 
   // v5: Análisis de liquidez → GridBias para grid asimétrico
   currentBias = undefined
@@ -238,7 +270,9 @@ export async function startBot(options: {
   runtime.mainLoopInterval = setInterval(async () => {
     if (!runtime.isRunning) return
     try {
-      await runBotCycle(runtime, gridLevels)
+      const cycleResult = await runBotCycle(runtime, gridLevels)
+      if (cycleResult.currentPrice > 0) runtime.lastPrice = cycleResult.currentPrice
+      await checkRebuildThreshold()
       await checkLayer3Triggers()
       await checkLiquidityReanalysis()
     } catch (err) {
@@ -363,8 +397,24 @@ async function checkLayer3Triggers(): Promise<void> {
       broadcastSSE('risk_alert', { message: response.risk_flags.join(' | ') })
     }
 
-    // Aplicar acción
+    // Fix 2 (v6): Con MANUAL_GRID_CONFIG=true, ignorar ajustes de grid pero respetar pause/risk
     const action = response.grid_adjustment.action
+    if (config.bot.manualGridConfig && action !== 'pause' && action !== 'keep') {
+      logger.info(
+        `Agente recomendó: ${action} pero MANUAL_GRID_CONFIG=true — ignorando ajuste de grid. ` +
+        `Razón: ${response.grid_adjustment.reason}`
+      )
+      // Actualizar bias en botState y salir sin aplicar el ajuste
+      if (runtime.botState) {
+        runtime.botState.agentBias = response.market_bias
+        runtime.botState.lastAgentTrigger = trigger
+        runtime.botState.lastAgentAt = now
+        await saveBotState(runtime.botState).catch(() => {})
+      }
+      return
+    }
+
+    // Aplicar acción
     if (action === 'pause') {
       runtime.isPaused = true
       if (runtime.botState) {
@@ -426,6 +476,44 @@ async function checkLayer3Triggers(): Promise<void> {
   }
 }
 
+async function checkRebuildThreshold(): Promise<void> {
+  if (!runtime.isRunning || runtime.isPaused || !runtime.botState || !runtime.currentConfig) return
+
+  const state = runtime.botState
+  const gridMin = state.gridMin
+  const gridMax = state.gridMax
+  if (!gridMin || !gridMax || gridMax <= gridMin) return
+
+  const config = getAppConfig()
+  const currentPrice = state.gridMin + (state.gridMax - state.gridMin) / 2  // aproximado
+  // Usar el precio desde el último ciclo del engine si está disponible
+  const price = runtime.lastPrice ?? currentPrice
+
+  const gridRange = gridMax - gridMin
+  const gridCenter = (gridMax + gridMin) / 2
+  const distanceFromCenter = Math.abs(price - gridCenter)
+  const distancePercent = (distanceFromCenter / (gridRange / 2)) * 100
+  const threshold = config.bot.gridRebuildThreshold
+
+  // Warning preventivo al 85% del threshold
+  const warningPct = threshold * 0.85
+  if (distancePercent >= warningPct && distancePercent < threshold) {
+    logger.warn(
+      `⚠️  Precio acercándose al límite del grid: ${distancePercent.toFixed(1)}% ` +
+      `(reconstrucción a: ${threshold}%)`
+    )
+    return
+  }
+
+  if (distancePercent >= threshold) {
+    const reason = `Precio al ${distancePercent.toFixed(1)}% del límite (threshold: ${threshold}%)`
+    logger.info(`🔄 Reconstruyendo grid: ${reason}`)
+    broadcastSSE('grid_rebuild', { pair: config.bot.pair, reason: 'threshold' })
+    await stopBot()
+    await startBot({ gridLevels: runtime.currentConfig.gridLevels })
+  }
+}
+
 async function checkLiquidityReanalysis(): Promise<void> {
   if (!runtime.isRunning || !runtime.currentConfig) return
 
@@ -458,11 +546,21 @@ async function checkLiquidityReanalysis(): Promise<void> {
     })
 
     // Si la dirección cambió → rebuild del grid con el nuevo bias
+    // Fix 2 (v6): No hacer rebuild si MANUAL_GRID_CONFIG=true
+    const configNow = getAppConfig()
     if (newBias.direction !== prevDirection && newBias.strength >= 20) {
-      logger.info(`[v5] Sesgo cambió ${prevDirection} → ${newBias.direction} — reconstruyendo grid`)
-      broadcastSSE('grid_bias_changed', { from: prevDirection, to: newBias.direction, strength: newBias.strength })
-      await stopBot()
-      await startBot({ gridLevels: runtime.currentConfig.gridLevels })
+      if (configNow.bot.manualGridConfig) {
+        logger.info(
+          `[v5] Sesgo cambió ${prevDirection} → ${newBias.direction} ` +
+          `pero MANUAL_GRID_CONFIG=true — omitiendo rebuild de liquidez`
+        )
+        broadcastSSE('grid_bias_changed', { from: prevDirection, to: newBias.direction, strength: newBias.strength })
+      } else {
+        logger.info(`[v5] Sesgo cambió ${prevDirection} → ${newBias.direction} — reconstruyendo grid`)
+        broadcastSSE('grid_bias_changed', { from: prevDirection, to: newBias.direction, strength: newBias.strength })
+        await stopBot()
+        await startBot({ gridLevels: runtime.currentConfig.gridLevels })
+      }
     }
   } catch (err) {
     logger.warn('[v5] Error en re-análisis de liquidez:', err)

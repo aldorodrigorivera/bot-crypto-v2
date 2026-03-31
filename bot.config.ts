@@ -55,16 +55,16 @@ export const MAIN_LOOP_INTERVAL_MS = 1050
 
 // ─── CAPAS DE ANÁLISIS (v2) ─────────────────────────────────────────────
 // Capa 1: Score mínimo para ejecutar una orden (0-100)
-export const LAYER1_MIN_RISK_SCORE = 30
+export const LAYER1_MIN_RISK_SCORE = 20
 
 // Capa 2: Probabilidad mínima para ejecutar al 100%
-export const LAYER2_MIN_PROBABILITY = 45
+export const LAYER2_MIN_PROBABILITY = 35
 
 // Capa 3: % de cambio de volatilidad en 10min que activa al agente
 export const LAYER3_TRIGGER_VOLATILITY = 3.5
 
 // Capa 3: Minutos sin trades que activa al agente
-export const LAYER3_TRIGGER_IDLE_MINUTES = 45
+export const LAYER3_TRIGGER_IDLE_MINUTES = 75
 
 // Capa 3: Re-análisis periódico del agente (horas)
 export const LAYER3_REVIEW_HOURS = 4
@@ -89,6 +89,8 @@ export const SIZING_CENTRAL_LEVELS_PERCENT = 60
 
 // ─── ORDER SPLITTING (v2) ───────────────────────────────────────────────
 // Activar micro-órdenes (true/false)
+// Con capital pequeño desactivar: si capital_activo / GRID_LEVELS < $15, las
+// micro-órdenes (30%) caen bajo el mínimo notional de Binance ($5) y son rechazadas.
 export const SPLIT_ENABLED = false
 
 // En cuántas partes dividir cada orden
@@ -122,3 +124,16 @@ export const INCUBATION_MAX_LOSS_PERCENT = 5
 
 // ─── v3: MULTI-CONFIG ───────────────────────────────────────────────────────
 export const MULTI_CONFIG_ENABLED = true
+
+
+// ─── v6: PROTECCIÓN DE CONFIG MANUAL ────────────────────────────────────────
+// Si true: el bot usa siempre GRID_LEVELS y GRID_RANGE_PERCENT del .env.
+// La Capa 3 sigue corriendo para alertas de riesgo pero NO puede cambiar el grid.
+export const MANUAL_GRID_CONFIG = true
+
+// ─── v6: THRESHOLD DE RECONSTRUCCIÓN ────────────────────────────────────────
+// % del rango que debe alcanzar el precio desde el centro para trigear rebuild.
+// 85 = reconstruye cuando el precio está al 85% del camino hacia el límite.
+// Subir a 90 si el grid se reconstruye muy seguido; bajar a 80 si el precio
+// se va muy lejos sin reconstruir.
+export const GRID_REBUILD_THRESHOLD = 85

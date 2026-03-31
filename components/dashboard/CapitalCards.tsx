@@ -43,7 +43,7 @@ function MetricCard({ title, value, sub, icon, valueClass, tooltip }: MetricCard
 
 export function CapitalCards() {
   const {
-    totalBase, freeBase, totalUSDT, totalProfitUSDT,
+    totalBase, freeBase, totalUSDT, totalProfitUSDT, totalProfitBase,
     todayTrades, totalTrades, ordersSkippedToday,
     botUSDT, pair,
   } = useBotStore(useShallow(s => ({
@@ -51,6 +51,7 @@ export function CapitalCards() {
     freeBase: s.freeBase,
     totalUSDT: s.totalUSDC,
     totalProfitUSDT: s.totalProfitUSDC,
+    totalProfitBase: s.totalProfitBase,
     todayTrades: s.todayTrades,
     totalTrades: s.totalTrades,
     ordersSkippedToday: s.ordersSkippedToday,
@@ -112,13 +113,14 @@ export function CapitalCards() {
       <MetricCard
         title="Ganancia Total"
         value={`${totalProfitUSDT >= 0 ? '+' : ''}${totalProfitUSDT.toFixed(4)} USDT`}
-        sub="desde inicio"
+        sub={totalProfitBase !== 0 ? `${totalProfitBase >= 0 ? '+' : ''}${totalProfitBase.toFixed(4)} ${base} acumulado` : 'desde inicio'}
         icon={<TrendingUp className="h-4 w-4" />}
         valueClass={totalProfitUSDT >= 0 ? 'text-green-500' : 'text-red-500'}
         tooltip={
           <div className="space-y-1">
             <p className="font-semibold">Ganancia neta acumulada</p>
             <p className="text-muted-foreground">Suma de ganancias de todos los ciclos completados (compra → venta) desde que se inició el bot, descontando fees de Binance (0.1% por lado).</p>
+            <p className="text-muted-foreground">{base} acumulado: {totalProfitBase >= 0 ? '+' : ''}{totalProfitBase.toFixed(4)} {base} ganado en base currency.</p>
             <p className="text-muted-foreground">Solo se registra al completar una venta.</p>
           </div>
         }

@@ -324,6 +324,8 @@ export interface AppConfig {
     splitDistribution: number[]
     splitSpreadPercent: number
     profitTargetUSDC: number
+    manualGridConfig: boolean
+    gridRebuildThreshold: number
   }
   server: {
     port: number
@@ -506,6 +508,8 @@ export interface BotRuntime {
   // v5: liquidez
   lastGridBias: GridBias | null
   lastLiquidityAt: Date | null
+  // v6: último precio conocido del ciclo principal
+  lastPrice: number | null
 }
 
 // ─── Preview de Inicio ────────────────────────────────────────────────────

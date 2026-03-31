@@ -28,6 +28,7 @@ function createInitialRuntime(): BotRuntime {
     startSnapshot: null,
     lastGridBias: null,
     lastLiquidityAt: null,
+    lastPrice: null,
   }
 }
 

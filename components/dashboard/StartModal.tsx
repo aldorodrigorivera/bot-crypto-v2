@@ -300,13 +300,13 @@ export function StartModal({
               <Slider
                 value={gridRange}
                 onValueChange={(v) => setGridRange(Array.isArray(v) ? v[0] : v)}
-                min={2}
+                min={0.25}
                 max={20}
-                step={0.5}
+                step={0.25}
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>2%</span>
+                <span>0.25%</span>
                 {claudeRange !== null ? (
                   <span className="text-blue-400">
                     ▲ Claude sugiere {claudeRange}%

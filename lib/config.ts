@@ -12,6 +12,7 @@ import {
   INCUBATION_ENABLED, INCUBATION_MIN_SIZE, INCUBATION_DURATION_DAYS,
   INCUBATION_MIN_TRADES, INCUBATION_TARGET_WIN_RATE, INCUBATION_MAX_LOSS_PERCENT,
   MULTI_CONFIG_ENABLED, MAIN_LOOP_INTERVAL_MS,
+  MANUAL_GRID_CONFIG, GRID_REBUILD_THRESHOLD,
 } from '../bot.config'
 
 // ─── Constantes globales ───────────────────────────────────────────────────
@@ -22,7 +23,7 @@ export const MIN_LEVEL_SEPARATION = 0.25
 export const BINANCE_MIN_NOTIONAL_USDT = 5.5
 export { MAIN_LOOP_INTERVAL_MS }
 export const REANALYSIS_CRON = '0 */4 * * *'
-export const LAYER3_MIN_INTERVAL_MS = 45 * 60 * 1000
+export const LAYER3_MIN_INTERVAL_MS = 75 * 60 * 1000
 export const PRICE_BROADCAST_INTERVAL_MS = 5_000
 
 // ─── 3 configuraciones predefinidas del grid ──────────────────────────────
@@ -91,6 +92,8 @@ export function getAppConfig(): AppConfig {
       splitDistribution: SPLIT_DISTRIBUTION,
       splitSpreadPercent: SPLIT_SPREAD_PERCENT,
       profitTargetUSDC: PROFIT_TARGET_USDC,
+      manualGridConfig: MANUAL_GRID_CONFIG,
+      gridRebuildThreshold: GRID_REBUILD_THRESHOLD,
     },
     server: {
       port: Number(process.env.PORT ?? 3000),

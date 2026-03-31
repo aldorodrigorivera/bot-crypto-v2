@@ -29,6 +29,7 @@ interface BotStore {
   activeUSDC: number
   totalUSDC: number
   totalProfitUSDC: number
+  totalProfitBase: number
   botUSDC: number | null  // null = no calculado aún; solo se actualiza con el botón
   todayProfitUSDC: number
   totalTrades: number
@@ -124,6 +125,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
   activeUSDC: 0,
   totalUSDC: 0,
   totalProfitUSDC: 0,
+  totalProfitBase: 0,
   botUSDC: null,
   todayProfitUSDC: 0,
   totalTrades: 0,
@@ -213,6 +215,7 @@ export const useBotStore = create<BotStore>((set, get) => ({
       activeUSDC: lb?.activeUSDC ?? bs?.activeUSDC ?? 0,
       totalUSDC: lb?.totalUSDC ?? 0,
       totalProfitUSDC: bs?.totalProfitUSDC ?? 0,
+      totalProfitBase: bs?.totalProfitBase ?? 0,
       totalTrades: bs?.totalTrades ?? 0,
       ordersSkippedToday: bs?.ordersSkippedToday ?? 0,
 
